@@ -1,0 +1,433 @@
+{
+  "info": {
+    "name": "İstanbul Vitamin API",
+    "description": "DermoEczane backend API — public + authenticated endpoints. Import to Postman and set the `baseUrl` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "sessionId", "value": "postman-session-1" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Oturum için session id varsa ekle",
+          "if (pm.variables.get('sessionId')) {",
+          "  pm.request.headers.upsert({ key: 'X-Session-ID', value: pm.variables.get('sessionId') });",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "auth": { "type": "noauth" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/register",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test+{{$timestamp}}@istanbulvitamin.com\",\n  \"password\": \"Test1234\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"phone\": \"05550000000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data?.token) pm.variables.set('token', body.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data?.token) pm.variables.set('token', body.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/admin/login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/admin/login",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@dermoeczane.com\",\n  \"password\": \"Admin123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.data?.token) pm.variables.set('adminToken', body.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/forgot-password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@example.com\"\n}" }
+          }
+        },
+        {
+          "name": "POST /auth/reset-password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/reset-password",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"PASTE_TOKEN_HERE\",\n  \"password\": \"YeniSifre123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /users/me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/me" }
+        },
+        {
+          "name": "PUT /users/me",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/users/me",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Test\",\n  \"last_name\": \"Updated\",\n  \"phone\": \"05550000001\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT /users/me/password",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/users/me/password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"Test1234\",\n  \"new_password\": \"Test12345\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "GET /products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products?page=1&per_page=12&sort=newest",
+              "host": ["{{baseUrl}}"], "path": ["products"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "12" },
+                { "key": "sort", "value": "newest" },
+                { "key": "category_id", "value": "", "disabled": true },
+                { "key": "brand_id", "value": "", "disabled": true },
+                { "key": "concern", "value": "", "disabled": true },
+                { "key": "min_price", "value": "", "disabled": true },
+                { "key": "max_price", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            },
+            "auth": { "type": "noauth" }
+          }
+        },
+        {
+          "name": "GET /products/featured",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/featured?limit=10", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /products/:slug",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/avene-anti-age-solaire-gunes-kremi-spf50-50-ml", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /categories",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /categories/tree",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories/tree", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /categories/showcase",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories/showcase", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /categories/:slug",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories/cilt-bakimi", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /brands",
+          "request": { "method": "GET", "url": "{{baseUrl}}/brands?per_page=50", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /brands?category_id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/brands?category_id=3&per_page=50", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /brands/spotlight",
+          "request": { "method": "GET", "url": "{{baseUrl}}/brands/spotlight", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /brands/:slug",
+          "request": { "method": "GET", "url": "{{baseUrl}}/brands/avene", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /skin-concerns",
+          "request": { "method": "GET", "url": "{{baseUrl}}/skin-concerns", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /skin-concerns/:slug",
+          "request": { "method": "GET", "url": "{{baseUrl}}/skin-concerns/kuru-cilt", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /campaigns",
+          "request": { "method": "GET", "url": "{{baseUrl}}/campaigns", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /pages/:slug",
+          "request": { "method": "GET", "url": "{{baseUrl}}/pages/hakkimizda", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /sliders",
+          "request": { "method": "GET", "url": "{{baseUrl}}/sliders", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /banners",
+          "request": { "method": "GET", "url": "{{baseUrl}}/banners", "auth": { "type": "noauth" } }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "GET /search",
+          "request": { "method": "GET", "url": "{{baseUrl}}/search?q=avene&page=1&per_page=12", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "GET /search/autocomplete",
+          "request": { "method": "GET", "url": "{{baseUrl}}/search/autocomplete?q=avene&limit=6", "auth": { "type": "noauth" } }
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "GET /cart",
+          "request": { "method": "GET", "url": "{{baseUrl}}/cart", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "POST /cart/items",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cart/items",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"product_id\": 1,\n  \"quantity\": 1\n}" }
+          }
+        },
+        {
+          "name": "PUT /cart/items/:id",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/cart/items/1",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}" }
+          }
+        },
+        {
+          "name": "DELETE /cart/items/:id",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/cart/items/1", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "POST /cart/coupon",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cart/coupon",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"WELCOME10\"\n}" }
+          }
+        },
+        {
+          "name": "DELETE /cart/coupon",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/cart/coupon", "auth": { "type": "noauth" } }
+        },
+        {
+          "name": "POST /cart/merge (auth)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/cart/merge" }
+        }
+      ]
+    },
+    {
+      "name": "Favorites (auth)",
+      "item": [
+        { "name": "GET /favorites", "request": { "method": "GET", "url": "{{baseUrl}}/favorites" } },
+        {
+          "name": "POST /favorites",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/favorites",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"product_id\": 1\n}" }
+          }
+        },
+        { "name": "DELETE /favorites/:productId", "request": { "method": "DELETE", "url": "{{baseUrl}}/favorites/1" } }
+      ]
+    },
+    {
+      "name": "Addresses (auth)",
+      "item": [
+        { "name": "GET /addresses", "request": { "method": "GET", "url": "{{baseUrl}}/addresses" } },
+        {
+          "name": "POST /addresses",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/addresses",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ev\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"phone\": \"05550000000\",\n  \"city\": \"İstanbul\",\n  \"district\": \"Kadıköy\",\n  \"neighborhood\": \"Moda\",\n  \"address_line\": \"Örnek Sokak No:1\",\n  \"postal_code\": \"34710\",\n  \"is_default\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT /addresses/:id",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/addresses/1",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Ev (güncel)\"\n}" }
+          }
+        },
+        { "name": "DELETE /addresses/:id", "request": { "method": "DELETE", "url": "{{baseUrl}}/addresses/1" } }
+      ]
+    },
+    {
+      "name": "Cards (auth)",
+      "item": [
+        { "name": "GET /cards", "request": { "method": "GET", "url": "{{baseUrl}}/cards" } },
+        { "name": "DELETE /cards/:id", "request": { "method": "DELETE", "url": "{{baseUrl}}/cards/1" } }
+      ]
+    },
+    {
+      "name": "Orders (auth)",
+      "item": [
+        { "name": "GET /orders", "request": { "method": "GET", "url": "{{baseUrl}}/orders?page=1&per_page=10" } },
+        { "name": "GET /orders/:id", "request": { "method": "GET", "url": "{{baseUrl}}/orders/1" } },
+        {
+          "name": "POST /orders",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipping_first_name\": \"Test\",\n  \"shipping_last_name\": \"User\",\n  \"shipping_phone\": \"05550000000\",\n  \"shipping_city\": \"İstanbul\",\n  \"shipping_district\": \"Kadıköy\",\n  \"shipping_address\": \"Moda Örnek Sokak No:1\",\n  \"billing_first_name\": \"Test\",\n  \"billing_last_name\": \"User\",\n  \"invoice_type\": \"individual\",\n  \"payment_method\": \"credit_card\",\n  \"installment_count\": 1,\n  \"shipping_method\": \"standard\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments (auth)",
+      "item": [
+        {
+          "name": "GET /payments/installments",
+          "request": { "method": "GET", "url": "{{baseUrl}}/payments/installments?total=499" }
+        },
+        {
+          "name": "POST /payments/start",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/start",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_id\": 1,\n  \"card_number\": \"4111111111111111\",\n  \"expiry\": \"12/30\",\n  \"cvv\": \"123\",\n  \"holder_name\": \"Test User\",\n  \"installment_count\": 1,\n  \"save_card\": false\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        { "name": "GET /settings", "request": { "method": "GET", "url": "{{baseUrl}}/settings", "auth": { "type": "noauth" } } },
+        { "name": "GET /settings/:group", "request": { "method": "GET", "url": "{{baseUrl}}/settings/site", "auth": { "type": "noauth" } } }
+      ]
+    }
+  ]
+}

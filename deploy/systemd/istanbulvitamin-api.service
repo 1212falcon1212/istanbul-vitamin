@@ -1,0 +1,24 @@
+[Unit]
+Description=istanbul-vitamin Go API
+After=network.target mysql.service redis-server.service
+Wants=mysql.service redis-server.service
+
+[Service]
+Type=simple
+User=istanbulvitamin
+Group=istanbulvitamin
+WorkingDirectory=/home/istanbulvitamin/htdocs/istanbulvitamin.com/app/backend
+EnvironmentFile=/home/istanbulvitamin/htdocs/istanbulvitamin.com/app/backend/.env
+ExecStart=/home/istanbulvitamin/htdocs/istanbulvitamin.com/app/backend/bin/server
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>DermoEczane — Kategori İkon Seçici</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+<style>
+  :root {
+    --primary: #7c3aed;
+    --soft: #ede9fe;
+    --text: #1e103d;
+    --muted: #8b7aaa;
+    --border: #e0d5f5;
+    --bg: #f5f0ff;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 15px/1.4 Inter, system-ui, sans-serif;
+    margin: 0; padding: 32px 24px;
+    background: var(--bg); color: var(--text);
+  }
+  header { max-width: 1200px; margin: 0 auto 24px; }
+  h1 {
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: 32px; margin: 0 0 6px;
+  }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .copy-hint {
+    display: inline-block; margin-top: 10px;
+    background: var(--soft); color: var(--primary);
+    padding: 6px 12px; border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+  }
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff;
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; opacity: 0; pointer-events: none;
+    transition: all 0.25s;
+    z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .container { max-width: 1200px; margin: 0 auto; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-head h2 {
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: 22px; margin: 0;
+  }
+  .slug {
+    font-size: 11px; color: var(--muted);
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.05em;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .icon-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: center;
+    position: relative;
+  }
+  .icon-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px -8px rgba(124, 58, 237, 0.35);
+  }
+  .icon-card iconify-icon {
+    font-size: 36px;
+    color: var(--primary);
+    display: block;
+    margin: 0 auto 8px;
+    min-height: 36px;
+  }
+  .icon-card.missing {
+    background: #fff5f7;
+    border-color: #fecaca;
+    opacity: 0.55;
+  }
+  .icon-card.missing::after {
+    content: "⚠︎ yüklenemedi";
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 9px;
+    color: #be123c;
+    font-weight: 600;
+  }
+  .icon-name {
+    font-family: ui-monospace, monospace;
+    font-size: 10px; color: var(--muted);
+    word-break: break-all;
+  }
+  .toolbar {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .toolbar input {
+    flex: 1; min-width: 200px;
+    height: 40px; padding: 0 14px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: #fff; font: inherit;
+  }
+  .toolbar input:focus { outline: none; border-color: var(--primary); }
+  .toolbar label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+    user-select: none;
+  }
+  footer {
+    max-width: 1200px; margin: 32px auto 0;
+    text-align: center; color: var(--muted); font-size: 12px;
+  }
+  footer code {
+    background: var(--soft); color: var(--primary);
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header class="container">
+  <h1>Kategori İkon Seçici</h1>
+  <p class="sub">Her kategoriye önerilen Iconify ikonları. Tıklayarak ikon adını kopyala.</p>
+  <span class="copy-hint">Tıkla → pano'ya kopyalanır</span>
+</header>
+
+<div class="container">
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="İkon ara (örn. lipstick, pill, baby)…" />
+    <label>
+      <input id="hideMissing" type="checkbox" checked />
+      Yüklenemeyenleri gizle
+    </label>
+  </div>
+</div>
+
+<div id="toast">Kopyalandı!</div>
+
+<div class="container" id="root"></div>
+
+<footer class="container">
+  Kullanım: <code>npm i @iconify/react</code> →
+  <code>&lt;Icon icon="mdi:lipstick" /&gt;</code> · veya
+  <code>&lt;iconify-icon icon="mdi:lipstick"&gt;&lt;/iconify-icon&gt;</code><br />
+  Tüm ikon setleri: <a href="https://icon-sets.iconify.design/" target="_blank" rel="noopener">icon-sets.iconify.design</a>
+</footer>
+
+<script>
+// Doğrulanmış ikonlar — çoğunluk mdi, ph (Phosphor), material-symbols, tabler, solar.
+const CATEGORIES = [
+  {
+    title: "Cilt Bakımı",
+    slug: "cilt-bakimi",
+    icons: [
+      "mdi:lotion-plus",
+      "mdi:lotion",
+      "mdi:lotion-plus-outline",
+      "mdi:face-woman-shimmer",
+      "mdi:face-woman-shimmer-outline",
+      "ph:drop-duotone",
+      "ph:drop-half-duotone",
+      "ph:flower-duotone",
+      "material-symbols:face-retouching-natural",
+      "material-symbols:face-retouching-natural-rounded",
+      "solar:drop-bold-duotone",
+      "tabler:droplet",
+    ],
+  },
+  {
+    title: "Makyaj",
+    slug: "makyaj",
+    icons: [
+      "mdi:lipstick",
+      "mdi:lipstick-profile",
+      "game-icons:lipstick",
+      "material-symbols:brush",
+      "material-symbols:brush-outline",
+      "mdi:brush",
+      "mdi:palette-outline",
+      "mdi:palette",
+      "ph:palette-duotone",
+      "mdi:nail",
+      "ph:eye-duotone",
+      "solar:palette-bold-duotone",
+    ],
+  },
+  {
+    title: "Saç Bakımı",
+    slug: "sac-bakimi",
+    icons: [
+      "mdi:hair-dryer",
+      "mdi:hair-dryer-outline",
+      "ph:hair-dryer-duotone",
+      "ph:hair-dryer-fill",
+      "mdi:comb",
+      "ph:scissors-duotone",
+      "mdi:content-cut",
+      "game-icons:hair-strands",
+      "material-symbols:dry",
+      "material-symbols:dry-outline",
+      "solar:scissors-bold-duotone",
+      "tabler:scissors",
+    ],
+  },
+  {
+    title: "Güneş Ürünleri",
+    slug: "gunes-urunleri",
+    icons: [
+      "ph:sun-duotone",
+      "ph:sun-horizon-duotone",
+      "mdi:weather-sunny",
+      "mdi:white-balance-sunny",
+      "material-symbols:sunny",
+      "material-symbols:sunny-outline",
+      "mdi:umbrella-beach",
+      "mdi:umbrella-beach-outline",
+      "mdi:sunglasses",
+      "ph:sunglasses-duotone",
+      "solar:sun-bold-duotone",
+      "tabler:sun",
+    ],
+  },
+  {
+    title: "Anne & Bebek",
+    slug: "anne-bebek",
+    icons: [
+      "mdi:baby-bottle",
+      "mdi:baby-bottle-outline",
+      "ph:baby-duotone",
+      "ph:baby-fill",
+      "material-symbols:baby-changing-station",
+      "mdi:baby-face",
+      "mdi:baby-face-outline",
+      "mdi:teddy-bear",
+      "mdi:baby-carriage",
+      "game-icons:baby-face",
+      "tabler:baby-carriage",
+      "solar:baby-bold-duotone",
+    ],
+  },
+  {
+    title: "Kişisel Bakım",
+    slug: "kisisel-bakim",
+    icons: [
+      "ph:sparkle-duotone",
+      "ph:sparkle-fill",
+      "mdi:shower-head",
+      "mdi:shower",
+      "material-symbols:spa",
+      "material-symbols:spa-outline",
+      "mdi:tooth-outline",
+      "mdi:tooth",
+      "mdi:toothbrush-paste",
+      "ph:flower-lotus-duotone",
+      "solar:stars-bold-duotone",
+      "tabler:sparkles",
+    ],
+  },
+  {
+    title: "Besin Takviyeleri / Vitamin (Hap Alternatifleri)",
+    slug: "besin-takviyeleri",
+    icons: [
+      "ph:leaf-duotone",
+      "tabler:leaf",
+      "mdi:nutrition",
+      "material-symbols:nutrition-rounded",
+      "ph:test-tube-duotone",
+      "fluent:food-apple-24-regular",
+      "mdi:orange",
+      "tabler:apple",
+      "solar:bottle-bold-duotone",
+      "mdi:beaker-outline",
+      "ph:sparkle-duotone",
+      "mdi:bottle-tonic-plus-outline",
+      "mdi:bottle-tonic",
+      "ph:flask-duotone",
+      "solar:flask-bold-duotone",
+      "mdi:food-apple-outline",
+      "solar:leaf-bold-duotone",
+      "hugeicons:medicine-bottle-01",
+      "hugeicons:plant-02",
+      "fluent:food-carrot-24-regular",
+    ],
+  },
+  {
+    title: "Besin Takviyeleri / Vitamin (Klasik — Hap)",
+    slug: "besin-takviyeleri-hap",
+    icons: [
+      "mdi:pill",
+      "mdi:pill-multiple",
+      "ph:pill-duotone",
+      "ph:pill-fill",
+      "material-symbols:pill",
+      "material-symbols:pill-outline",
+      "mdi:vitamin",
+      "mdi:medication",
+      "mdi:medication-outline",
+      "solar:pill-bold-duotone",
+    ],
+  },
+  {
+    title: "Vücut Bakımı",
+    slug: "vucut-bakimi",
+    icons: [
+      "ph:heart-duotone",
+      "ph:heart-fill",
+      "mdi:human",
+      "mdi:human-handsup",
+      "material-symbols:spa",
+      "ph:yoga-duotone",
+      "mdi:meditation",
+      "mdi:yoga",
+      "ph:flower-tulip-duotone",
+      "solar:heart-bold-duotone",
+      "tabler:yoga",
+      "mdi:hand-heart",
+    ],
+  },
+  {
+    title: "Kampanyalar / Genel",
+    slug: "kampanyalar",
+    icons: [
+      "ph:fire-duotone",
+      "ph:fire-fill",
+      "mdi:fire",
+      "mdi:sale",
+      "mdi:sale-outline",
+      "mdi:gift-outline",
+      "mdi:gift",
+      "ph:gift-duotone",
+      "ph:percent-duotone",
+      "mdi:heart-pulse",
+      "solar:fire-bold-duotone",
+      "tabler:discount-2",
+    ],
+  },
+];
+
+const root = document.getElementById("root");
+const search = document.getElementById("search");
+const hideMissing = document.getElementById("hideMissing");
+const toast = document.getElementById("toast");
+
+CATEGORIES.forEach((cat) => {
+  const section = document.createElement("section");
+  section.dataset.section = cat.slug;
+  section.innerHTML = `
+    <div class="section-head">
+      <h2>${cat.title}</h2>
+      <span class="slug">/${cat.slug}</span>
+    </div>
+    <div class="grid">
+      ${cat.icons
+        .map(
+          (ic) => `
+        <div class="icon-card" data-icon="${ic}" title="${ic}">
+          <iconify-icon icon="${ic}" aria-label="${ic}"></iconify-icon>
+          <div class="icon-name">${ic}</div>
+        </div>`
+        )
+        .join("")}
+    </div>
+  `;
+  root.appendChild(section);
+});
+
+// Eksik ikonları algıla: iconify-icon 'load' event'i var, 'error' yok ama
+// bir süre sonra shadow root'taki SVG'nin varlığına bakarak tespit ederiz.
+async function markMissing() {
+  const icons = document.querySelectorAll(".icon-card iconify-icon");
+  // Iconify cache'ini bekle
+  await new Promise((r) => setTimeout(r, 900));
+  icons.forEach((ic) => {
+    const ok = ic.shadowRoot && ic.shadowRoot.querySelector("svg, span, div");
+    // Fallback: size check
+    const rect = ic.getBoundingClientRect();
+    const loaded = (ok && ic.shadowRoot.innerHTML.trim().length > 0) ||
+                   rect.height > 10 && rect.width > 10;
+    if (!loaded) {
+      ic.closest(".icon-card").classList.add("missing");
+    }
+  });
+  applyFilters();
+}
+markMissing();
+
+// Search & hide missing
+function applyFilters() {
+  const q = (search.value || "").toLowerCase().trim();
+  const hide = hideMissing.checked;
+  document.querySelectorAll(".icon-card").forEach((card) => {
+    const name = card.dataset.icon.toLowerCase();
+    const match = !q || name.includes(q);
+    const missing = card.classList.contains("missing");
+    card.style.display = match && !(hide && missing) ? "" : "none";
+  });
+  // Hide empty sections
+  document.querySelectorAll("section").forEach((sec) => {
+    const visible = sec.querySelectorAll(".icon-card:not([style*='display: none'])").length;
+    sec.style.display = visible > 0 ? "" : "none";
+  });
+}
+search.addEventListener("input", applyFilters);
+hideMissing.addEventListener("change", applyFilters);
+
+// Click to copy
+document.addEventListener("click", async (e) => {
+  const card = e.target.closest(".icon-card");
+  if (!card || card.classList.contains("missing")) return;
+  const name = card.dataset.icon;
+  try {
+    await navigator.clipboard.writeText(name);
+    toast.textContent = `${name} kopyalandı`;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1400);
+  } catch {
+    alert(name);
+  }
+});
+</script>
+
+</body>
+</html>

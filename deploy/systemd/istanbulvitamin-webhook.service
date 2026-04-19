@@ -1,0 +1,21 @@
+[Unit]
+Description=istanbul-vitamin GitHub webhook listener
+After=network.target
+
+[Service]
+Type=simple
+User=istanbulvitamin
+Group=istanbulvitamin
+WorkingDirectory=/home/istanbulvitamin/htdocs/istanbulvitamin.com/app/deploy/webhook
+EnvironmentFile=/etc/istanbulvitamin-webhook.env
+ExecStart=/home/istanbulvitamin/htdocs/istanbulvitamin.com/app/deploy/webhook/bin/webhook
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

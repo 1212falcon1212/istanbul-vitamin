@@ -1,0 +1,44 @@
+# --- env & secrets ---
+.env
+.env.*
+!.env.example
+!.env.deploy.example
+/etc/istanbulvitamin-webhook.env
+
+# --- backend (Go) ---
+backend/bin/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/scripts/__pycache__/
+
+# --- frontend (Next.js) ---
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/coverage/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# --- webhook build artifact ---
+deploy/webhook/bin/
+
+# --- editor / OS ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.log
+
+# --- misc ---
+node_modules/
+
+# --- local tooling (not part of the project) ---
+.claude/
+.remember/
+.specstory/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+

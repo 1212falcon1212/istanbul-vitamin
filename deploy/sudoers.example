@@ -1,0 +1,4 @@
+# /etc/sudoers.d/istanbulvitamin-deploy
+# The `istanbulvitamin` user needs to restart the API service after deploys.
+# Only whitelist the exact command — no general sudo.
+istanbulvitamin ALL=(root) NOPASSWD: /bin/systemctl restart istanbulvitamin-api
