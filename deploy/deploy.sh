@@ -79,7 +79,7 @@ if [[ "$SKIP_FRONTEND" != "true" && "$FRONTEND_CHANGED" == "true" ]]; then
   npm run build
 
   log "restarting pm2 process $PM2_FRONTEND_NAME"
-  pm2 restart "$PM2_FRONTEND_NAME" --update-env
+  sudo /usr/bin/pm2 restart "$PM2_FRONTEND_NAME" --update-env
   cd "$REPO_DIR"
 else
   log "frontend unchanged — skipping"

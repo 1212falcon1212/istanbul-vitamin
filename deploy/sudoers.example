@@ -1,4 +1,7 @@
 # /etc/sudoers.d/istanbulvitamin-deploy
-# The `istanbulvitamin` user needs to restart the API service after deploys.
-# Only whitelist the exact command — no general sudo.
+# The `istanbulvitamin` user needs to restart the API service and the
+# pm2-managed frontend process after deploys. pm2 daemon runs as root
+# (shared with other sites on this VPS).
 istanbulvitamin ALL=(root) NOPASSWD: /bin/systemctl restart istanbulvitamin-api
+istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/pm2 restart istanbulvitamin-web *
+istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/pm2 restart istanbulvitamin-web
