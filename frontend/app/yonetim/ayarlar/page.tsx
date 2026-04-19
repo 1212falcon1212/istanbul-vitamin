@@ -48,6 +48,7 @@ const tabs: { id: string; label: string; fields: SettingField[] }[] = [
     fields: [
       { key: "site_logo_url", label: "Logo (Açık Arkaplan)", type: "image", hint: "Header ve koyu arkaplanlar dışında kullanılır. PNG/SVG önerilir, max 10 MB." },
       { key: "site_logo_url_dark", label: "Logo (Koyu Arkaplan)", type: "image", hint: "Footer gibi koyu bölgeler için beyaz logo (opsiyonel — boşsa Açık logo kullanılır)." },
+      { key: "site_favicon_url", label: "Favicon", type: "image", hint: "Tarayıcı sekmesinde görünen ikon. 32×32 veya 64×64 px PNG/ICO/SVG önerilir." },
     ],
   },
   {

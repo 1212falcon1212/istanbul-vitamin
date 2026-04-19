@@ -17,6 +17,7 @@ export interface SiteSettings {
   site_name?: string;
   site_logo_url?: string;
   site_logo_url_dark?: string;
+  site_favicon_url?: string;
   site_description?: string;
   phone?: string;
   email?: string;
