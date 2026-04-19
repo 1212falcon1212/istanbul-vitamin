@@ -9,7 +9,7 @@ module.exports = {
       args: "run start",
       env: {
         NODE_ENV: "production",
-        PORT: "3002",
+        PORT: "3003",
       },
       exec_mode: "fork",
       max_memory_restart: "600M",
