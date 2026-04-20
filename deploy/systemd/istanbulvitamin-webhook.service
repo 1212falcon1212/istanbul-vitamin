@@ -14,7 +14,9 @@ RestartSec=3
 StandardOutput=journal
 StandardError=journal
 
-NoNewPrivileges=true
+# NoNewPrivileges cannot be true here — deploy.sh needs sudo to restart
+# the pm2 process (daemon runs as root) and the API systemd unit.
+NoNewPrivileges=false
 ProtectHome=false
 
 [Install]
