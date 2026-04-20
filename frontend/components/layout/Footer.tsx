@@ -163,7 +163,7 @@ export default function Footer() {
                 <img
                   src={logoUrl}
                   alt={siteName}
-                  className="h-10 w-auto object-contain"
+                  className="h-12 w-auto object-contain bg-white rounded-lg p-2"
                 />
               ) : (
                 <span className="font-display text-2xl text-white">
