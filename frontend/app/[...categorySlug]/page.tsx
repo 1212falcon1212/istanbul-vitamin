@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description:
         content.category.meta_description ||
         content.category.description ||
-        `${content.category.name} kategorisindeki dermokozmetik urunleri - DermoEczane`,
+        `${content.category.name} kategorisindeki dermokozmetik urunleri - İstanbul Vitamin`,
       alternates: { canonical },
       openGraph: {
         title: content.category.meta_title || content.category.name,

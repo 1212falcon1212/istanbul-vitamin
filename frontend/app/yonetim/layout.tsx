@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: {
     default: "Yönetim Paneli",
-    template: "%s | DermoEczane Yönetim",
+    template: "%s | İstanbul Vitamin Yönetim",
   },
   robots: {
     index: false,

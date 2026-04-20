@@ -63,7 +63,7 @@ export default function HeroSlider({ sliders }: HeroSliderProps) {
             {/* Background image */}
             <Image
               src={slide.image_url}
-              alt={slide.title || "DermoEczane"}
+              alt={slide.title || "İstanbul Vitamin"}
               fill
               sizes="100vw"
               priority={index === 0}

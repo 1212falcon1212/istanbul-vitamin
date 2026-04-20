@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     concern.meta_title || `${concern.name} için Ürünler — Dermokozmetik Çözümler`;
   const description =
     concern.meta_description ||
-    `${concern.name} cilt sorununa özel dermatoloji onaylı dermokozmetik ürünler. Eczane güvencesiyle DermoEczane'de.`;
+    `${concern.name} cilt sorununa özel dermatoloji onaylı dermokozmetik ürünler. Eczane güvencesiyle İstanbul Vitamin'de.`;
 
   return {
     title,

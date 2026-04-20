@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// brandPrimary marka birincil rengi (DermoEczane).
+// brandPrimary marka birincil rengi (İstanbul Vitamin).
 const brandPrimary = "#7c3aed"
 
 // baseLayout tek bir HTML iskeleti uretir. innerHTML body icerigidir.
@@ -33,7 +33,7 @@ func baseLayout(title, innerHTML string) string {
 	b.WriteString(`;padding:24px 32px;text-align:left;">
               <div style="display:inline-block;background:#ffffff;color:`)
 	b.WriteString(brandPrimary)
-	b.WriteString(`;font-weight:700;font-size:18px;padding:8px 14px;border-radius:8px;letter-spacing:0.3px;">DermoEczane</div>
+	b.WriteString(`;font-weight:700;font-size:18px;padding:8px 14px;border-radius:8px;letter-spacing:0.3px;">İstanbul Vitamin</div>
             </td>
           </tr>
           <tr>
@@ -43,8 +43,8 @@ func baseLayout(title, innerHTML string) string {
           </tr>
           <tr>
             <td style="padding:20px 32px;background:#fafafa;color:#6b7280;font-size:12px;text-align:center;border-top:1px solid #eeeeee;">
-              Bu e-posta size DermoEczane tarafindan otomatik gonderilmistir.<br>
-              &copy; DermoEczane
+              Bu e-posta size İstanbul Vitamin tarafindan otomatik gonderilmistir.<br>
+              &copy; İstanbul Vitamin
             </td>
           </tr>
         </table>
@@ -66,7 +66,7 @@ func button(url, label string) string {
 
 // PasswordResetEmail sifre sifirlama e-postasi icin subject + HTML body doner.
 func PasswordResetEmail(resetURL string) (string, string) {
-	subject := "Sifre Sifirlama — DermoEczane"
+	subject := "Sifre Sifirlama — İstanbul Vitamin"
 	inner := `
               <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Sifrenizi sifirlayin</h1>
               <p style="margin:0 0 16px;">Hesabiniz icin sifre sifirlama talebi aldik. Asagidaki butona tiklayarak yeni sifrenizi olusturabilirsiniz.</p>` +
@@ -109,7 +109,7 @@ func WelcomeEmail(firstName string) (string, string) {
 	subject := fmt.Sprintf("Aramiza hos geldin, %s!", name)
 	inner := fmt.Sprintf(`
               <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Aramiza hos geldin, %s!</h1>
-              <p style="margin:0 0 16px;">DermoEczane ailesine katildigin icin tesekkur ederiz. Artik binlerce urune hizli ve guvenli sekilde ulasabilirsin.</p>
+              <p style="margin:0 0 16px;">İstanbul Vitamin ailesine katildigin icin tesekkur ederiz. Artik binlerce urune hizli ve guvenli sekilde ulasabilirsin.</p>
               <p style="margin:0 0 8px;">Senin icin hazirladiklarimiz:</p>
               <ul style="margin:0 0 16px 18px;padding:0;color:#374151;">
                 <li>Ozel kampanya ve firsatlar</li>

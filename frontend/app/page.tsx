@@ -20,7 +20,7 @@ import NewArrivals from "@/components/home/NewArrivals";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "DermoEczane — Dermokozmetik Ürünleri",
+  title: "İstanbul Vitamin — Dermokozmetik Ürünleri",
   description:
     "5.200'den fazla orijinal dermokozmetik ürün tek platformda. Cilt bakımı, saç bakımı, güneş ürünleri ve daha fazlası.",
 };

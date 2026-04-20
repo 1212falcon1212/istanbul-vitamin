@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md p-8 bg-card-bg rounded-2xl shadow-lg border border-border">
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl text-primary mb-2">
-            DermoEczane
+            İstanbul Vitamin
           </h1>
           <p className="text-text-secondary text-sm">Yönetim Paneli</p>
         </div>

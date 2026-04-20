@@ -21,11 +21,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "DermoEczane — Dermokozmetik Ürünleri",
-    template: "%s | DermoEczane",
+    default: "İstanbul Vitamin — Dermokozmetik Ürünleri",
+    template: "%s | İstanbul Vitamin",
   },
   description:
-    "Orijinal dermokozmetik ürünleri en uygun fiyatlarla DermoEczane'de. Cilt bakımı, saç bakımı, güneş ürünleri ve daha fazlası.",
+    "Orijinal dermokozmetik ürünleri en uygun fiyatlarla İstanbul Vitamin'de. Cilt bakımı, saç bakımı, güneş ürünleri ve daha fazlası.",
   keywords: [
     "dermokozmetik",
     "cilt bakımı",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    siteName: "DermoEczane",
+    siteName: "İstanbul Vitamin",
   },
   robots: {
     index: true,

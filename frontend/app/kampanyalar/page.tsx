@@ -10,7 +10,7 @@ import Breadcrumb from "@/components/layout/Breadcrumb";
 export const metadata: Metadata = {
   title: "Kampanyalar",
   description:
-    "DermoEczane kampanyalari ve indirimli dermokozmetik urunleri. Firsatlari kacirmayin!",
+    "İstanbul Vitamin kampanyalari ve indirimli dermokozmetik urunleri. Firsatlari kacirmayin!",
 };
 
 export default async function KampanyalarPage() {

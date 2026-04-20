@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description:
       product.meta_description ||
       product.short_description ||
-      `${product.name} - DermoEczane'de en uygun fiyatlarla.`,
+      `${product.name} - İstanbul Vitamin'de en uygun fiyatlarla.`,
     alternates: { canonical },
     openGraph: {
       title: product.name,

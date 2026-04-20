@@ -10,7 +10,7 @@ import Breadcrumb from "@/components/layout/Breadcrumb";
 export const metadata: Metadata = {
   title: "Markalar",
   description:
-    "DermoEczane'de bulunan tum dermokozmetik markalari. A'dan Z'ye marka listesi.",
+    "İstanbul Vitamin'de bulunan tum dermokozmetik markalari. A'dan Z'ye marka listesi.",
 };
 
 export default async function MarkalarPage() {

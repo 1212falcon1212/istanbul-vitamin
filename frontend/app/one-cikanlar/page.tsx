@@ -9,7 +9,7 @@ import ProductGrid from "@/components/product/ProductGrid";
 export const metadata: Metadata = {
   title: "One Cikan Urunler",
   description:
-    "DermoEczane one cikan dermokozmetik urunleri. En populer cilt bakimi, sac bakimi ve gunes urunleri.",
+    "İstanbul Vitamin one cikan dermokozmetik urunleri. En populer cilt bakimi, sac bakimi ve gunes urunleri.",
 };
 
 export default async function OneCikanlarPage() {

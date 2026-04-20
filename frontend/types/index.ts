@@ -1,5 +1,5 @@
 // ============================================================
-// DermoEczane TypeScript Type Definitions
+// İstanbul Vitamin TypeScript Type Definitions
 // ============================================================
 
 // --- Auth ---

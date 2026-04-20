@@ -135,7 +135,7 @@ export default function AdminShell({ title, children }: AdminShellProps) {
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-border shrink-0">
           <Link href="/yonetim" className="font-display text-lg text-primary">
-            DermoEczane
+            İstanbul Vitamin
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
