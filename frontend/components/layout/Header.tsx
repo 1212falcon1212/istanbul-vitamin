@@ -274,18 +274,18 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
               <span>0212 123 45 67</span>
             </a>
             <a
-              href="mailto:info@dermoeczane.com"
+              href="mailto:info@istanbulvitamin.com"
               className="flex items-center gap-1.5 hover:text-primary-soft transition-colors"
             >
               <EnvelopeIcon className="w-3.5 h-3.5" />
-              <span>info@dermoeczane.com</span>
+              <span>info@istanbulvitamin.com</span>
             </a>
           </div>
 
           {/* Right: utility links */}
           <div className="flex items-center gap-5">
             <Link
-              href="/hesabim/siparislerim"
+              href="/hesabim/siparisler"
               className="hover:text-primary-soft transition-colors"
             >
               Siparis Takip

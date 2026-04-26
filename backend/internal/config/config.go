@@ -80,6 +80,10 @@ func Load() *Config {
 	appEnv := getEnv("APP_ENV", "development")
 	jwtSecret := getEnv("JWT_SECRET", "change-me-in-production")
 
+	// SITE_URL is the public origin used in transactional email links.
+	// Falls back to FRONTEND_URL because production deploys only set the latter.
+	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
+
 	// Prod'da zayıf/varsayılan JWT secret → fail-fast
 	if appEnv == "production" {
 		if jwtSecret == "" || jwtSecret == "change-me-in-production" || len(jwtSecret) < 32 {
@@ -91,7 +95,7 @@ func Load() *Config {
 	return &Config{
 		AppEnv:  appEnv,
 		AppPort: getEnv("APP_PORT", "8080"),
-		SiteURL: getEnv("SITE_URL", "http://localhost:3000"),
+		SiteURL: getEnv("SITE_URL", frontendURL),
 
 		JWTSecret: jwtSecret,
 		JWTExpiry: getEnv("JWT_EXPIRY", "24h"),
@@ -134,7 +138,7 @@ func Load() *Config {
 		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
 		SMTPFrom:     getEnv("SMTP_FROM", ""),
 
-		FrontendURL:   getEnv("FRONTEND_URL", "http://localhost:3000"),
+		FrontendURL:   frontendURL,
 		UploadDir:     getEnv("UPLOAD_DIR", "./uploads"),
 		MaxUploadSize: maxUpload,
 	}

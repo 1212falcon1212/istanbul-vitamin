@@ -19,7 +19,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Yardım",
     links: [
-      { label: "Sipariş Takibi", href: "/siparis-takibi" },
+      { label: "Sipariş Takibi", href: "/hesabim/siparisler" },
       { label: "Kargo & Teslimat", href: "/kargo-teslimat" },
       { label: "İade ve Değişim", href: "/iade-degisim" },
       { label: "Sıkça Sorulan Sorular", href: "/sss" },
