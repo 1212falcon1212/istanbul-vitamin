@@ -71,6 +71,14 @@ if [[ "$SKIP_FRONTEND" != "true" && "$FRONTEND_CHANGED" == "true" ]]; then
   log "building frontend (Next.js)"
   cd "$FRONTEND_DIR"
 
+  # PM2 runs the frontend as root and writes runtime data into .next/cache as
+  # root. The next build runs as the deploy user, which then can't overwrite
+  # those cache files. Reclaim ownership before building so turbopack can
+  # write into .next without "Permission denied".
+  if [[ -d .next ]]; then
+    sudo /usr/bin/chown -R istanbulvitamin:istanbulvitamin .next || true
+  fi
+
   if grep -qE '^frontend/(package\.json|package-lock\.json)$' <<<"$CHANGED"; then
     log "installing deps (lockfile changed)"
     npm ci --no-audit --no-fund
