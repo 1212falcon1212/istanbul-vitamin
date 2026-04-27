@@ -15,8 +15,8 @@
   --color-accent-emerald: #059669;
   --color-accent-amber: #d97706;
 
-  --font-display: var(--font-dm-serif-display);
-  --font-body: var(--font-dm-sans);
+  --font-display: "Comic Sans MS", "Comic Sans", "Chalkboard SE", cursive;
+  --font-body: "Comic Sans MS", "Comic Sans", "Chalkboard SE", cursive;
 }
 
 :root {

@@ -1,23 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, Inter } from "next/font/google";
 import Providers from "@/components/Providers";
 import LenisProvider from "@/app/providers/LenisProvider";
 import { Toaster } from "sonner";
 import "./globals.css";
-
-const dmSerifDisplay = DM_Serif_Display({
-  weight: "400",
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-dm-serif-display",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin", "latin-ext"],
-  variable: "--font-dm-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -59,10 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="tr"
-      className={`${dmSerifDisplay.variable} ${inter.variable} h-full antialiased`}
-    >
+    <html lang="tr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-bg-primary text-text-primary font-body">
         <LenisProvider>
           <Providers>{children}</Providers>
