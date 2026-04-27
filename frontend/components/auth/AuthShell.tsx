@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useSettings } from "@/lib/settings";
+import { resolveImageUrl } from "@/lib/utils";
 
 interface AuthShellProps {
   children: React.ReactNode;
@@ -12,6 +16,14 @@ interface AuthShellProps {
  * - Desktop: iki kolonlu kart, ekran dikey/yatayda ortalı
  */
 export default function AuthShell({ children, title, subtitle }: AuthShellProps) {
+  const { settings } = useSettings();
+
+  const logoUrl = settings?.site_logo_url
+    ? resolveImageUrl(settings.site_logo_url)
+    : "";
+
+  const siteName = settings?.site_name || "İstanbul Vitamin";
+
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-bg-primary overflow-hidden">
       {/* Ambient gradient blobs */}
@@ -26,12 +38,21 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
       {/* Top bar */}
       <header className="relative z-10 px-6 md:px-10 py-5 flex items-center justify-between">
-        <Link
-          href="/"
-          className="font-display text-xl md:text-2xl text-text-primary hover:opacity-80 transition"
-        >
-          <span>Dermo</span>
-          <span className="text-primary">Eczane</span>
+        <Link href="/" className="shrink-0 mr-6">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={siteName}
+              width={160}
+              height={40}
+              className="h-auto max-h-[40px] object-contain"
+            />
+          ) : (
+            <span className="font-display text-xl md:text-2xl text-text-primary">
+              {siteName}
+            </span>
+          )}
         </Link>
         <Link
           href="/"

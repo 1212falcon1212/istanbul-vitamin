@@ -11,7 +11,8 @@ import type { Address, SavedCard } from "@/types";
 import AddressForm from "@/components/checkout/AddressForm";
 import PaymentForm from "@/components/checkout/PaymentForm";
 import Spinner from "@/components/ui/Spinner";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn, formatPrice, resolveImageUrl } from "@/lib/utils";
+import { useSettings } from "@/lib/settings";
 
 const FREE_SHIPPING_THRESHOLD = 500;
 const SHIPPING_COST = 39.9;
@@ -42,6 +43,11 @@ export default function OdemePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { cartId, items, subtotal, updateItem, removeItem } = useCart();
+  const { settings } = useSettings();
+  const logoUrl = settings.site_logo_url
+    ? resolveImageUrl(settings.site_logo_url)
+    : "";
+  const siteName = settings.site_name || "İstanbul Vitamin";
 
   const [step, setStep] = useState<Step>("address");
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -275,10 +281,21 @@ export default function OdemePage() {
             {/* Brand */}
             <Link
               href="/"
-              className="inline-block font-display text-2xl md:text-3xl text-text-primary mb-10 hover:opacity-80 transition"
+              aria-label={siteName}
+              className="inline-block mb-10 hover:opacity-80 transition"
             >
-              <span>Dermo</span>
-              <span className="text-primary">Eczane</span>
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt={siteName}
+                  className="h-10 md:h-12 w-auto object-contain"
+                />
+              ) : (
+                <span className="font-display text-2xl md:text-3xl text-text-primary">
+                  {siteName}
+                </span>
+              )}
             </Link>
 
             {/* Breadcrumb steps */}
