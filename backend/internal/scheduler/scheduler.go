@@ -1,19 +1,22 @@
 package scheduler
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/istanbulvitamin/backend/internal/database"
+	"github.com/istanbulvitamin/backend/internal/integrations/aras"
 	"github.com/istanbulvitamin/backend/internal/integrations/bizimhesap"
 	"github.com/istanbulvitamin/backend/internal/models"
 )
 
 // Start arka plan zamanlayıcısını başlatır ve periyodik işleri kaydeder.
 // Ana uygulama kapatıldığında Stop çağrılmalı.
-// cfgProvider Bizimhesap settings erişimi içindir (nil geçilirse fatura retry atlanır).
-func Start(cfgProvider bizimhesap.ConfigProvider) (gocron.Scheduler, error) {
+//   - bizimhesapCfg nil ise fatura retry atlanır.
+//   - arasSvc nil ise Aras kargo polling atlanır.
+func Start(bizimhesapCfg bizimhesap.ConfigProvider, arasSvc *aras.Service) (gocron.Scheduler, error) {
 	s, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
 	if err != nil {
 		return nil, err
@@ -29,11 +32,31 @@ func Start(cfgProvider bizimhesap.ConfigProvider) (gocron.Scheduler, error) {
 	}
 
 	// Saatlik: Bizimhesap fatura oluşturulamamış shipped/delivered siparişleri yeniden dene.
-	if cfgProvider != nil {
+	if bizimhesapCfg != nil {
 		_, err = s.NewJob(
 			gocron.CronJob("15 * * * *", false), // her saatin 15. dakikasında
 			gocron.NewTask(func() {
-				bizimhesap.RetryPendingInvoices(database.DB, cfgProvider)
+				bizimhesap.RetryPendingInvoices(database.DB, bizimhesapCfg)
+			}),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 15 dk'da bir: Aras Kargo'da hala teslim edilmemiş gönderilerin durumunu güncelle.
+	if arasSvc != nil {
+		_, err = s.NewJob(
+			gocron.DurationJob(15*time.Minute),
+			gocron.NewTask(func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+				updated, err := arasSvc.PollStatuses(ctx)
+				if err != nil {
+					log.Printf("[aras] poll hatası: %v", err)
+				} else if updated > 0 {
+					log.Printf("[aras] %d kargo güncellendi", updated)
+				}
 			}),
 		)
 		if err != nil {

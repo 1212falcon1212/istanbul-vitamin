@@ -112,6 +112,33 @@ export function getOrderStatusColor(status: string): string {
 }
 
 /**
+ * Aras Kargo durum kodları (1..7) — backend `aras_status_code`'dan gelir.
+ */
+export const ARAS_STATUS_STEPS = [
+  { code: 1, label: "Çıkış Şubesinde" },
+  { code: 2, label: "Yolda" },
+  { code: 3, label: "Teslimat Şubesinde" },
+  { code: 4, label: "Dağıtımda" },
+  { code: 5, label: "Parçalı Teslimat" },
+  { code: 6, label: "Teslim Edildi" },
+  { code: 7, label: "Yönlendirildi" },
+] as const;
+
+export function getArasStatusLabel(code?: number | null): string {
+  if (code == null) return "—";
+  const step = ARAS_STATUS_STEPS.find((s) => s.code === code);
+  return step?.label ?? `Durum ${code}`;
+}
+
+export function getArasStatusColor(code?: number | null): string {
+  if (code == null) return "text-gray-500 bg-gray-50";
+  if (code <= 2) return "text-amber-700 bg-amber-50";
+  if (code <= 5) return "text-blue-700 bg-blue-50";
+  if (code === 6) return "text-green-700 bg-green-50";
+  return "text-orange-700 bg-orange-50"; // 7 = Yönlendirildi
+}
+
+/**
  * cn utility — simple class name merger
  */
 export function cn(...classes: (string | undefined | null | false)[]): string {

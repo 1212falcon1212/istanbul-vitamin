@@ -161,6 +161,13 @@ export interface Order {
   tracking_number?: string;
   shipped_at?: string;
   delivered_at?: string;
+  aras_integration_code?: string;
+  aras_status_code?: number | null;
+  aras_status_text?: string;
+  aras_status_checked_at?: string;
+  aras_parcel_count?: number | null;
+  aras_cancel_attempted_at?: string;
+  aras_cancel_succeeded?: boolean | null;
   payment_method: "credit_card" | "bank_transfer";
   customer_note?: string;
   bizimhesap_invoice_id?: string;
@@ -195,6 +202,56 @@ export interface OrderStatusHistory {
   note?: string;
   changed_by: string;
   created_at: string;
+}
+
+// --- Order Cancellation / Return ---
+export type CancellationType = "cancel" | "return";
+export type CancellationStatus = "requested" | "approved" | "rejected" | "completed";
+export type RefundStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface OrderCancellation {
+  id: number;
+  order_id: number;
+  type: CancellationType;
+  status: CancellationStatus;
+  reason: string;
+  note?: string;
+  refund_amount?: number;
+  refund_status?: RefundStatus;
+  paytr_refund_id?: string;
+  aras_return_tracking?: string;
+  requested_by_user_id?: number;
+  decided_by_admin_id?: number;
+  decided_at?: string;
+  created_at: string;
+  updated_at: string;
+  order?: Order;
+}
+
+// --- Aras Kargo etiket payload ---
+export interface ArasParcelBarcode {
+  barcode_number: string;
+  sequence: number;
+  total: number;
+  weight?: string;
+}
+
+export interface ArasLabelData {
+  order_number: string;
+  integration_code: string;
+  tracking_number: string;
+  cargo_company: string;
+  ship_from_name: string;
+  ship_from_phone: string;
+  ship_from_address: string;
+  ship_from_city: string;
+  ship_from_town: string;
+  ship_to_name: string;
+  ship_to_phone: string;
+  ship_to_address: string;
+  ship_to_city: string;
+  ship_to_town: string;
+  parcels: ArasParcelBarcode[];
 }
 
 // --- Cart ---

@@ -49,6 +49,15 @@ type Order struct {
 	ShippedAt      *time.Time `json:"shipped_at,omitempty"`
 	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
 
+	// Aras Kargo (SOAP entegrasyonu)
+	ArasIntegrationCode   string     `gorm:"type:varchar(32);uniqueIndex" json:"aras_integration_code,omitempty"`
+	ArasStatusCode        *int       `gorm:"type:tinyint" json:"aras_status_code,omitempty"`
+	ArasStatusText        string     `gorm:"type:varchar(64)" json:"aras_status_text,omitempty"`
+	ArasStatusCheckedAt   *time.Time `json:"aras_status_checked_at,omitempty"`
+	ArasParcelCount       *int       `gorm:"type:tinyint unsigned;default:1" json:"aras_parcel_count,omitempty"`
+	ArasCancelAttemptedAt *time.Time `json:"aras_cancel_attempted_at,omitempty"`
+	ArasCancelSucceeded   *bool      `gorm:"type:tinyint(1)" json:"aras_cancel_succeeded,omitempty"`
+
 	// Payment
 	PaymentMethod string `gorm:"type:enum('credit_card','bank_transfer');default:'credit_card'" json:"payment_method"`
 	PaymentID     string `gorm:"type:varchar(100)" json:"payment_id,omitempty"`

@@ -49,13 +49,15 @@ func (h *SettingHandler) GetAll(c *fiber.Ctx) error {
 }
 
 // GetByGroup belirli gruptaki ayarlari dondurur (public).
+// aras.password gibi secretKeys redakte edilir; admin form alanı boş gelirse
+// mevcut DB değeri korunur (UpdatePreservingSecrets).
 func (h *SettingHandler) GetByGroup(c *fiber.Ctx) error {
 	group := strings.TrimSpace(c.Params("group"))
 	if group == "" {
 		return utils.BadRequest(c, "Grup adı zorunludur")
 	}
 
-	settings, err := h.service.GetByGroup(group)
+	settings, err := h.service.GetByGroupRedacted(group)
 	if err != nil {
 		return utils.InternalError(c)
 	}
@@ -99,7 +101,7 @@ func (h *SettingHandler) Update(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Geçerli ayar bulunamadı")
 	}
 
-	if err := h.service.Update(settings); err != nil {
+	if err := h.service.UpdatePreservingSecrets(settings); err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
 

@@ -36,6 +36,7 @@ const navEntries: NavEntry[] = [
     icon: OrderIcon,
     items: [
       { href: "/yonetim/siparisler", label: "Siparişler" },
+      { href: "/yonetim/iadeler", label: "İade / İptal Talepleri" },
       { href: "/yonetim/kampanyalar", label: "Kampanyalar" },
       { href: "/yonetim/kuponlar", label: "Kuponlar" },
       { href: "/yonetim/musteriler", label: "Müşteriler" },

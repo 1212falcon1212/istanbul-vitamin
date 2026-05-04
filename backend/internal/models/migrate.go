@@ -21,6 +21,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&Order{},
 		&OrderItem{},
 		&OrderStatusHistory{},
+		&OrderCancellation{},
+		&ArasShipmentLog{},
 		&Cart{},
 		&CartItem{},
 		&Favorite{},

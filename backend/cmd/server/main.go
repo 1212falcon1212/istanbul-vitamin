@@ -18,9 +18,11 @@ import (
 	"github.com/istanbulvitamin/backend/internal/config"
 	"github.com/istanbulvitamin/backend/internal/database"
 	"github.com/istanbulvitamin/backend/internal/handlers"
+	"github.com/istanbulvitamin/backend/internal/integrations/aras"
 	"github.com/istanbulvitamin/backend/internal/middleware"
 	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/scheduler"
+	"github.com/istanbulvitamin/backend/internal/services"
 )
 
 func main() {
@@ -91,12 +93,20 @@ func main() {
 	// Static files (uploads)
 	app.Static("/uploads", cfg.UploadDir)
 
-	// Setup routes
-	setupRoutes(app, cfg, db)
+	// Aras Kargo + iptal/iade altyapısı için ayrı servis grafiği kuruyoruz —
+	// hem scheduler poll job'ı hem setupRoutes içindeki yeni handler'lar bunu paylaşır.
+	settingSvc := services.NewSettingService(db)
+	orderSvc := services.NewOrderService(db)
+	arasSvc := aras.NewService(db, settingSvc, orderSvc)
+	paymentSvc := services.NewPaymentService(db, cfg)
+	cancellationSvc := services.NewCancellationService(db, orderSvc, arasSvc, paymentSvc)
 
-	// Background scheduler (cart cleanup vb.)
-	// NOT: Bizimhesap retry cron'u manuel mod için nil geçilerek kapatıldı.
-	sched, schedErr := scheduler.Start(nil)
+	// Setup routes
+	setupRoutes(app, cfg, db, arasSvc, cancellationSvc, settingSvc)
+
+	// Background scheduler (cart cleanup + Aras 15 dk poll).
+	// Bizimhesap retry cron'u manuel mod için nil geçilerek kapatıldı.
+	sched, schedErr := scheduler.Start(nil, arasSvc)
 	if schedErr != nil {
 		log.Printf("Scheduler başlatılamadı: %v", schedErr)
 	}
@@ -125,7 +135,7 @@ func main() {
 	}
 }
 
-func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
+func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *aras.Service, cancellationSvc *services.CancellationService, settingSvc *services.SettingService) {
 	api := app.Group("/api/v1")
 
 	// Health check
@@ -305,6 +315,11 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 	api.Get("/orders/:id", requireAuth, orderHandler.GetByID)
 	api.Post("/orders", requireAuth, orderHandler.Create)
 
+	// Cancellation/Return talebi (müşteri)
+	cancellationHandler := handlers.NewCancellationHandler(cancellationSvc)
+	api.Post("/orders/:id/cancellation", requireAuth, cancellationHandler.Request)
+	api.Get("/me/cancellations", requireAuth, cancellationHandler.ListMine)
+
 	// Payment (protected)
 	paymentHandler := handlers.NewPaymentHandler(cfg)
 	api.Post("/payments/start", requireAuth, paymentHandler.StartPayment)
@@ -375,6 +390,19 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 	admin.Put("/orders/:id/status", orderHandler.UpdateStatus)
 	admin.Post("/orders/:id/invoice/regenerate", orderHandler.RegenerateInvoice)
 
+	// Admin - Aras Kargo entegrasyonu
+	arasHandler := handlers.NewArasHandler(arasSvc, settingSvc)
+	admin.Post("/orders/:id/aras/ship", arasHandler.Ship)
+	admin.Post("/orders/:id/aras/refresh", arasHandler.Refresh)
+	admin.Post("/orders/:id/aras/cancel", arasHandler.CancelShipment)
+	admin.Get("/orders/:id/aras/labels", arasHandler.Labels)
+	admin.Post("/aras/sender-address/register", arasHandler.RegisterSender)
+
+	// Admin - Cancellation/Return kuyruğu
+	admin.Get("/cancellations", cancellationHandler.AdminList)
+	admin.Post("/cancellations/:id/approve", cancellationHandler.Approve)
+	admin.Post("/cancellations/:id/reject", cancellationHandler.Reject)
+
 	// Admin - Campaigns
 	admin.Get("/campaigns", campaignHandler.AdminList)
 	admin.Post("/campaigns", campaignHandler.Create)
@@ -414,6 +442,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 	// Admin - Settings
 	admin.Put("/settings", settingHandler.Update)
 	admin.Post("/settings/bizimhesap/test", settingHandler.TestBizimhesap)
+	admin.Post("/settings/aras/test", arasHandler.TestConnection)
 
 	// Admin - Customers
 	customerHandler := handlers.NewCustomerHandler()

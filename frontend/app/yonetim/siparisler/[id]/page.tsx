@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import Spinner from "@/components/ui/Spinner";
+import ArasShipmentPanel from "./ArasShipmentPanel";
 import { api } from "@/lib/api";
 import {
   formatPrice,
@@ -458,26 +459,10 @@ export default function OrderDetailPage() {
             </Section>
           )}
 
-          {/* Kargo */}
-          {(order.cargo_company || order.tracking_number || order.shipped_at || order.delivered_at) && (
+          {/* Kargo (Aras entegrasyonu) — sipariş cancelled/refunded değilse göster */}
+          {order.status !== "cancelled" && order.status !== "refunded" && (
             <Section title="Kargo">
-              <div className="space-y-2 text-sm">
-                {order.cargo_company && (
-                  <InfoRow label="Firma" value={order.cargo_company} />
-                )}
-                {order.tracking_number && (
-                  <InfoRow
-                    label="Takip No"
-                    value={<code className="text-xs">{order.tracking_number}</code>}
-                  />
-                )}
-                {order.shipped_at && (
-                  <InfoRow label="Kargoya Verildi" value={formatDateShort(order.shipped_at)} />
-                )}
-                {order.delivered_at && (
-                  <InfoRow label="Teslim Edildi" value={formatDateShort(order.delivered_at)} />
-                )}
-              </div>
+              <ArasShipmentPanel order={order} onChange={fetchOrder} />
             </Section>
           )}
         </aside>

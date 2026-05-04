@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
@@ -12,7 +12,9 @@ import {
   cn,
 } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
-import type { Order, OrderStatus } from "@/types";
+import CargoTimeline from "@/components/cargo/CargoTimeline";
+import CancellationModal from "@/components/cargo/CancellationModal";
+import type { CancellationType, Order, OrderStatus } from "@/types";
 
 const STATUS_STEPS: OrderStatus[] = ["pending", "shipped", "delivered"];
 
@@ -30,26 +32,29 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelModal, setCancelModal] = useState<CancellationType | null>(null);
+  const [actionMsg, setActionMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+
+  const loadOrder = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get<Order | { order: Order }>(`/orders/${id}`);
+      const raw = res.data as Order | { order?: Order } | undefined;
+      const o = raw && "order" in raw ? raw.order : (raw as Order | undefined);
+      if (o) {
+        setOrder(o);
+      }
+    } catch {
+      setError("Siparis detaylari yuklenirken bir hata olustu.");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    async function loadOrder() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await api.get<Order | { order: Order }>(`/orders/${id}`);
-        const raw = res.data as Order | { order?: Order } | undefined;
-        const o = raw && "order" in raw ? raw.order : (raw as Order | undefined);
-        if (o) {
-          setOrder(o);
-        }
-      } catch {
-        setError("Siparis detaylari yuklenirken bir hata olustu.");
-      } finally {
-        setLoading(false);
-      }
-    }
     loadOrder();
-  }, [id]);
+  }, [loadOrder]);
 
   if (loading) {
     return (
@@ -189,24 +194,49 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         </div>
       )}
 
-      {/* Cargo tracking */}
-      {order.tracking_number && (
-        <div className="bg-purple-50 rounded-2xl border border-purple-200 p-5">
-          <h3 className="text-sm font-medium text-purple-800 mb-2">
-            Kargo Takip Bilgisi
+      {/* Aras Kargo timeline — sipariş kargolanmış veya teslim edilmişse göster */}
+      {(order.tracking_number || order.aras_status_code) && !isCancelledOrRefunded && (
+        <div className="bg-card-bg rounded-2xl border border-border p-5">
+          <h3 className="font-display text-lg text-text-primary mb-3">
+            Kargo Takibi
           </h3>
-          <p className="text-sm text-purple-700">
-            {order.cargo_company && (
-              <span className="font-medium">{order.cargo_company}: </span>
-            )}
-            {order.tracking_number}
-          </p>
-          {order.shipped_at && (
-            <p className="text-xs text-purple-600 mt-1">
-              Kargoya verilme tarihi: {formatDate(order.shipped_at)}
-            </p>
-          )}
+          <CargoTimeline
+            statusCode={order.aras_status_code ?? null}
+            statusText={order.aras_status_text}
+            trackingNumber={order.tracking_number}
+            cargoCompany={order.cargo_company || "Aras Kargo"}
+            lastChecked={order.aras_status_checked_at}
+            orderStatus={order.status}
+          />
         </div>
+      )}
+
+      {/* Müşteri iptal/iade aksiyon kartı */}
+      {(order.status === "pending" || order.status === "shipped" || order.status === "delivered") && (
+        <CustomerActionsCard
+          order={order}
+          onCancel={() => setCancelModal("cancel")}
+          onReturn={() => setCancelModal("return")}
+          message={actionMsg}
+        />
+      )}
+
+      {cancelModal && (
+        <CancellationModal
+          orderId={order.id}
+          type={cancelModal}
+          onClose={() => setCancelModal(null)}
+          onSuccess={() => {
+            setActionMsg({
+              kind: "success",
+              text:
+                cancelModal === "cancel" && order.status === "pending"
+                  ? "Siparişiniz iptal edildi. Tutar otomatik iade edildi."
+                  : "Talebiniz alındı. Onayladığımızda size bilgi vereceğiz.",
+            });
+            loadOrder();
+          }}
+        />
       )}
 
       {/* Order items */}
@@ -347,6 +377,71 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           <p className="text-sm text-text-secondary">{order.customer_note}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function CustomerActionsCard({
+  order,
+  onCancel,
+  onReturn,
+  message,
+}: {
+  order: Order;
+  onCancel: () => void;
+  onReturn: () => void;
+  message: { kind: "success" | "error"; text: string } | null;
+}) {
+  const canCancelPending = order.status === "pending";
+  const canCancelShipped = order.status === "shipped";
+  const canReturn = order.status === "delivered";
+
+  if (!canCancelPending && !canCancelShipped && !canReturn) return null;
+
+  return (
+    <div className="bg-card-bg rounded-2xl border border-border p-5">
+      <h3 className="font-display text-lg text-text-primary mb-2">
+        İptal / İade
+      </h3>
+      <p className="text-sm text-text-secondary mb-4">
+        {canCancelPending && "Siparişiniz henüz hazırlanıyor — iptal ettiğinizde tutar anında iade edilir."}
+        {canCancelShipped && "Siparişiniz kargoya verildi. Yine de iptal/iade etmek istiyorsanız talebinizi bize iletin; ekibimiz onayladıktan sonra iade süreci başlar."}
+        {canReturn && "Teslim aldığınız ürünleri iade etmek istiyorsanız talep oluşturun; iade kargo bilgisini size ileteceğiz."}
+      </p>
+
+      {message && (
+        <div className={cn(
+          "rounded-lg p-3 text-sm mb-3",
+          message.kind === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+        )}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        {(canCancelPending || canCancelShipped) && (
+          <button
+            onClick={onCancel}
+            className="h-10 px-4 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+          >
+            {canCancelPending ? "Siparişi İptal Et" : "İptal Talebi Gönder"}
+          </button>
+        )}
+        {canReturn && (
+          <button
+            onClick={onReturn}
+            className="h-10 px-4 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary hover:text-white transition-colors"
+          >
+            İade Talebi Gönder
+          </button>
+        )}
+        <Link
+          href="/hesabim/iadeler"
+          className="h-10 px-4 leading-10 text-center text-sm text-text-secondary hover:text-primary transition-colors"
+        >
+          İptal/İade geçmişim →
+        </Link>
+      </div>
     </div>
   );
 }

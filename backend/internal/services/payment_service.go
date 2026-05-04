@@ -361,6 +361,81 @@ func (s *PaymentService) GetInstallments(binNumber string, amount float64) ([]In
 	return options, nil
 }
 
+// RefundResult PayTR iade çağrısı sonucu.
+type RefundResult struct {
+	Status      string  `json:"status"`
+	ReferenceNo string  `json:"reference_no"`
+	Amount      float64 `json:"amount"`
+	Message     string  `json:"message,omitempty"`
+}
+
+// RefundPayment PayTR /odeme/iade endpoint'ini çağırır.
+// referenceNo iadeyi iz sürebilmek için bizim ürettiğimiz benzersiz string (örn cancellation.id).
+// PayTR config tanımsızsa dev mode: sahte refund_id döner ve gerçek tahsilat iadesi yapılmaz.
+func (s *PaymentService) RefundPayment(orderID uint64, amount float64, referenceNo string) (*RefundResult, error) {
+	if amount <= 0 {
+		return nil, errors.New("iade tutarı sıfırdan büyük olmalı")
+	}
+	var order models.Order
+	if err := s.db.First(&order, orderID).Error; err != nil {
+		return nil, errors.New("sipariş bulunamadı")
+	}
+
+	merchantID := s.cfg.PayTRMerchantID
+	merchantKey := s.cfg.PayTRMerchantKey
+	merchantSalt := s.cfg.PayTRMerchantSalt
+
+	// Dev mode — PayTR creds yoksa veya order DEV-payment_id ile geldiyse fake refund.
+	if strings.TrimSpace(merchantID) == "" || strings.HasPrefix(order.PaymentID, "DEV-") {
+		fakeID := fmt.Sprintf("DEV-REFUND-%d-%d", orderID, time.Now().Unix())
+		return &RefundResult{
+			Status:      "success",
+			ReferenceNo: fakeID,
+			Amount:      amount,
+			Message:     "Dev mode iade (gerçek tahsilat iade edilmedi)",
+		}, nil
+	}
+
+	merchantOID := order.OrderNumber
+	returnAmount := fmt.Sprintf("%.2f", amount)
+
+	// Hash: merchant_id + merchant_oid + return_amount + reference_no + merchant_salt
+	hashStr := merchantID + merchantOID + returnAmount + referenceNo
+	token := s.generateHash(hashStr, merchantKey, merchantSalt)
+
+	resp, err := s.client.R().
+		SetFormData(map[string]string{
+			"merchant_id":   merchantID,
+			"merchant_oid":  merchantOID,
+			"return_amount": returnAmount,
+			"reference_no":  referenceNo,
+			"paytr_token":   token,
+		}).
+		SetResult(map[string]interface{}{}).
+		Post("/odeme/iade")
+	if err != nil {
+		return nil, errors.New("iade servisi ile iletişim kurulamadı")
+	}
+	result, ok := resp.Result().(*map[string]interface{})
+	if !ok || result == nil {
+		return nil, errors.New("iade servisi geçersiz yanıt döndü")
+	}
+	respMap := *result
+	status, _ := respMap["status"].(string)
+	if status != "success" {
+		errMsg, _ := respMap["err_msg"].(string)
+		if errMsg == "" {
+			errMsg = "iade başarısız"
+		}
+		return &RefundResult{Status: "error", Message: errMsg}, errors.New(errMsg)
+	}
+	return &RefundResult{
+		Status:      "success",
+		ReferenceNo: referenceNo,
+		Amount:      amount,
+	}, nil
+}
+
 // generateHash PayTR HMAC-SHA256 hash olusturur.
 func (s *PaymentService) generateHash(data, key, salt string) string {
 	mac := hmac.New(sha256.New, []byte(key+salt))

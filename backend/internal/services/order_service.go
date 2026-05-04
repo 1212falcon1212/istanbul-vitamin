@@ -441,6 +441,148 @@ func (s *OrderService) UpdateStatus(id uint64, newStatus string, note string, ch
 	return nil
 }
 
+// ApplyArasShipment Aras SetOrder başarılı olduktan sonra siparişi "shipped" durumuna taşır
+// ve aras_* alanlarını set eder. UpdateStatus akışını kullandığımız için status_history,
+// shipped_at ve (varsa) Bizimhesap fatura tetikleyicisi de doğal olarak çalışır.
+func (s *OrderService) ApplyArasShipment(orderID uint64, integrationCode, trackingNo, cargoCompany string, parcelCount int) error {
+	if integrationCode == "" {
+		return errors.New("integration code boş olamaz")
+	}
+	updates := map[string]interface{}{
+		"aras_integration_code": integrationCode,
+		"cargo_company":         cargoCompany,
+	}
+	if trackingNo != "" {
+		updates["tracking_number"] = trackingNo
+	}
+	if parcelCount > 0 {
+		updates["aras_parcel_count"] = parcelCount
+	}
+	if err := s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error; err != nil {
+		return errors.New("aras kargo bilgileri kaydedilemedi")
+	}
+	// status pending iken çağrıldı; shipped'e geçmek için UpdateStatus kullan.
+	var current models.Order
+	if err := s.db.Select("status").First(&current, orderID).Error; err != nil {
+		return err
+	}
+	if current.Status != "shipped" && current.Status != "delivered" {
+		note := fmt.Sprintf("Aras Kargo'ya verildi — takip: %s", trackingNo)
+		if trackingNo == "" {
+			note = "Aras Kargo'ya verildi (takip no bekleniyor)"
+		}
+		if err := s.UpdateStatus(orderID, "shipped", note, "system:aras"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ApplyArasStatus Aras tracking sorgusunun döndürdüğü 1..7 durum kodunu siparişe yazar.
+// 6 (Teslim Edildi) durumunda sipariş "delivered"'a geçer.
+func (s *OrderService) ApplyArasStatus(orderID uint64, code int, text string) error {
+	now := time.Now()
+	updates := map[string]interface{}{
+		"aras_status_code":       code,
+		"aras_status_text":       text,
+		"aras_status_checked_at": &now,
+	}
+	if err := s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error; err != nil {
+		return errors.New("aras durumu kaydedilemedi")
+	}
+	if code == 6 {
+		var current models.Order
+		if err := s.db.Select("status").First(&current, orderID).Error; err == nil && current.Status == "shipped" {
+			_ = s.UpdateStatus(orderID, "delivered", "Aras Kargo: Teslim Edildi", "system:aras")
+		}
+	}
+	return nil
+}
+
+// MarkCancelAttempt Aras CancelDispatch sonucunu siparişe yazar.
+// 999 (irsaliye kesildi) → succeeded=false; 0 → succeeded=true.
+func (s *OrderService) MarkCancelAttempt(orderID uint64, succeeded bool) error {
+	now := time.Now()
+	flag := succeeded
+	updates := map[string]interface{}{
+		"aras_cancel_attempted_at": &now,
+		"aras_cancel_succeeded":    &flag,
+	}
+	if err := s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error; err != nil {
+		return errors.New("aras iptal denemesi kaydedilemedi")
+	}
+	return nil
+}
+
+// CancelByCustomer pending durumdaki siparişi iptal eder + stok geri yükler.
+// CancellationService tarafından otomatik onaylı pending iptaller için çağrılır.
+func (s *OrderService) CancelByCustomer(orderID uint64, note string) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Preload("Items").First(&order, orderID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("sipariş bulunamadı")
+			}
+			return err
+		}
+		if order.Status != "pending" {
+			return errors.New("sadece beklemedeki siparişler iptal edilebilir")
+		}
+		// Stok iadesi
+		for _, it := range order.Items {
+			if it.VariantID != nil {
+				if err := tx.Model(&models.ProductVariant{}).
+					Where("id = ?", *it.VariantID).
+					UpdateColumn("stock", gorm.Expr("stock + ?", it.Quantity)).Error; err != nil {
+					return err
+				}
+			} else if it.ProductID != nil {
+				if err := tx.Model(&models.Product{}).
+					Where("id = ?", *it.ProductID).
+					UpdateColumn("stock", gorm.Expr("stock + ?", it.Quantity)).Error; err != nil {
+					return err
+				}
+			}
+			if it.ProductID != nil {
+				_ = tx.Model(&models.Product{}).
+					Where("id = ? AND sold_count >= ?", *it.ProductID, it.Quantity).
+					UpdateColumn("sold_count", gorm.Expr("sold_count - ?", it.Quantity)).Error
+			}
+		}
+		if err := tx.Model(&order).Updates(map[string]interface{}{"status": "cancelled"}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.OrderStatusHistory{
+			OrderID:   order.ID,
+			OldStatus: "pending",
+			NewStatus: "cancelled",
+			Note:      note,
+			ChangedBy: "customer",
+		}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// MarkRefunded sipariş statüsünü refunded'a çeker (UpdateStatus geçiş kuralı dışındaysa zorla).
+// Bizimhesap fatura artık iptal edilmemeli — sadece local statü güncellenir.
+func (s *OrderService) MarkRefunded(orderID uint64, note, changedBy string) error {
+	var order models.Order
+	if err := s.db.First(&order, orderID).Error; err != nil {
+		return errors.New("sipariş bulunamadı")
+	}
+	if order.Status == "refunded" {
+		return nil
+	}
+	// Geçiş "shipped"/"delivered" → "refunded" zaten validate ediyor.
+	// "cancelled" zaten terminal — yeniden refunded yapmıyoruz.
+	if order.Status == "cancelled" {
+		return nil
+	}
+	return s.UpdateStatus(orderID, "refunded", note, changedBy)
+}
+
 // GetDashboardStats dashboard istatistiklerini dondurur.
 func (s *OrderService) GetDashboardStats() (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
