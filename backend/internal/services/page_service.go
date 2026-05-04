@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/utils"
@@ -65,7 +66,9 @@ func (s *PageService) Create(p *models.Page) error {
 	return nil
 }
 
-// Update mevcut sayfayi gunceller.
+// Update mevcut sayfayi gunceller. Save() ile değil, hedeflenmiş Updates() ile
+// yazıyoruz — aksi halde handler'dan gelen sıfır CreatedAt değeri MySQL strict
+// mode'da NOT NULL TIMESTAMP'i bozuyor ve UPDATE 1292/1364 hatasıyla 400 dönüyordu.
 func (s *PageService) Update(p *models.Page) error {
 	var existing models.Page
 	if err := s.db.First(&existing, p.ID).Error; err != nil {
@@ -75,16 +78,36 @@ func (s *PageService) Update(p *models.Page) error {
 		return errors.New("sayfa getirilirken bir hata oluştu")
 	}
 
-	// Baslik degistiyse slug'i yeniden olustur
+	// Slug boş gelirse mevcudunu koru — kullanıcı slug input'unu temizlemiş olabilir.
+	if strings.TrimSpace(p.Slug) == "" {
+		p.Slug = existing.Slug
+	}
+
+	// Başlık değiştiyse ve slug elle değiştirilmediyse, slug'i yeni başlıktan üret.
 	if p.Title != existing.Title && p.Slug == existing.Slug {
 		slug, err := s.ensureUniqueSlug(utils.Slugify(p.Title), p.ID)
 		if err != nil {
 			return err
 		}
 		p.Slug = slug
+	} else if p.Slug != existing.Slug {
+		// Slug elle değiştirildiyse benzersizliği garanti et.
+		slug, err := s.ensureUniqueSlug(p.Slug, p.ID)
+		if err != nil {
+			return err
+		}
+		p.Slug = slug
 	}
 
-	if err := s.db.Save(p).Error; err != nil {
+	updates := map[string]interface{}{
+		"title":            p.Title,
+		"slug":             p.Slug,
+		"content":          p.Content,
+		"is_active":        p.IsActive,
+		"meta_title":       p.MetaTitle,
+		"meta_description": p.MetaDescription,
+	}
+	if err := s.db.Model(&models.Page{}).Where("id = ?", p.ID).Updates(updates).Error; err != nil {
 		return errors.New("sayfa güncellenirken bir hata oluştu")
 	}
 	return nil

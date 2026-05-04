@@ -30,6 +30,20 @@ body {
   font-family: var(--font-body), sans-serif;
 }
 
+/*
+ * Tıklama gecikmesini azalt: bazı tarayıcılar (özellikle iOS Safari) tap'i
+ * çift dokunmaya kadar geciktirebiliyordu. Buton ve linklerde manipulation
+ * davranışı tap delay'i kaldırır; tap-highlight-color ise gri flash'ı keser.
+ */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display), serif;
 }

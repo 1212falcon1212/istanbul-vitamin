@@ -205,14 +205,16 @@ func (s *CartService) GetCartWithDetails(cartID uint64) (*models.Cart, error) {
 	return &cart, nil
 }
 
-// ApplyCoupon sepete kupon uygular ve kupon bilgilerini dondurur.
-func (s *CartService) ApplyCoupon(cartID uint64, code string, userID *uint64) (*models.Coupon, error) {
+// ApplyCoupon sepete kupon uygular ve hem kupon bilgisini hem hesaplanan
+// indirim tutarını döndürür. Frontend, sepet ekranında bu indirimi gösterip
+// toplamdan düşüyor.
+func (s *CartService) ApplyCoupon(cartID uint64, code string, userID *uint64) (*models.Coupon, float64, error) {
 	couponService := NewCouponService(s.db)
 
 	// Sepet toplamini hesapla
 	var cart models.Cart
 	if err := s.db.Preload("Items").Preload("Items.Product").Preload("Items.Variant").First(&cart, cartID).Error; err != nil {
-		return nil, errors.New("sepet bulunamadı")
+		return nil, 0, errors.New("sepet bulunamadı")
 	}
 
 	var orderAmount float64
@@ -224,12 +226,12 @@ func (s *CartService) ApplyCoupon(cartID uint64, code string, userID *uint64) (*
 		}
 	}
 
-	coupon, _, err := couponService.Validate(code, orderAmount, userID)
+	coupon, discount, err := couponService.Validate(code, orderAmount, userID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return coupon, nil
+	return coupon, discount, nil
 }
 
 // ClearCart sepetteki tum ogeleri temizler.

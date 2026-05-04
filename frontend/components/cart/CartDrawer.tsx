@@ -52,12 +52,23 @@ export default function CartDrawer() {
     setCouponLoading(true);
     setCouponError("");
     try {
-      const res = await api.post<{ discount_amount: number }>("/cart/coupon", {
-        code,
-      });
-      if (res.data) {
-        setCouponDiscount(res.data.discount_amount);
+      const sessionId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("cart_session_id")
+          : null;
+      const res = await api.post<{ discount_amount: number }>(
+        "/cart/coupon",
+        { code },
+        { headers: sessionId ? { "X-Session-ID": sessionId } : {} }
+      );
+      const amount = Number(res.data?.discount_amount);
+      if (Number.isFinite(amount) && amount > 0) {
+        setCouponDiscount(amount);
         setCouponApplied(code);
+      } else {
+        setCouponError("Kupon uygulanamadı");
+        setCouponDiscount(0);
+        setCouponApplied("");
       }
     } catch (err) {
       setCouponError(

@@ -252,7 +252,7 @@ func (s *SearchService) autocompleteDB(query string, limit int) ([]models.Produc
 		Where("is_active = ?", true).
 		Where("MATCH(name, short_description) AGAINST(? IN BOOLEAN MODE)", booleanTerm).
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Where("is_primary = ?", true).Limit(1)
+			return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
 		}).
 		Order(gorm.Expr("MATCH(name, short_description) AGAINST(? IN BOOLEAN MODE) DESC, sold_count DESC", booleanTerm)).
 		Limit(limit).
@@ -272,7 +272,7 @@ func (s *SearchService) autocompleteDBLike(query string, limit int) ([]models.Pr
 		Select("id, name, slug, price, compare_price").
 		Where("is_active = ? AND name LIKE ?", true, searchTerm).
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Where("is_primary = ?", true).Limit(1)
+			return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
 		}).
 		Order("sold_count DESC").
 		Limit(limit).

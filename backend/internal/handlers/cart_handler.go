@@ -204,13 +204,14 @@ func (h *CartHandler) ApplyCoupon(c *fiber.Ctx) error {
 		return utils.BadRequest(c, err.Error())
 	}
 
-	coupon, err := h.service.ApplyCoupon(cart.ID, req.Code, userIDPtr)
+	coupon, discount, err := h.service.ApplyCoupon(cart.ID, req.Code, userIDPtr)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}
 
 	return utils.SuccessResponse(c, fiber.Map{
-		"coupon": coupon,
+		"coupon":          coupon,
+		"discount_amount": discount,
 	})
 }
 
