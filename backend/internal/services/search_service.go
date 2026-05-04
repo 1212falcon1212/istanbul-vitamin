@@ -43,12 +43,15 @@ func (s *SearchService) Search(query string, page, perPage int) ([]models.Produc
 	}
 
 	if products, total, ok := s.searchMeili(query, page, perPage); ok && total > 0 {
+		s.backfillProductImages(products)
 		return products, total, nil
 	}
 	return s.searchDB(query, page, perPage)
 }
 
 // Autocomplete hızlı öneri — Meili kullanır, yoksa DB'ye düşer.
+// Meili belgelerinde image_url boş olabiliyor (eski indexler), bu yüzden
+// dönen ürünler arasında resmi olmayanlar varsa DB'den backfill ediyoruz.
 func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product, error) {
 	if query == "" {
 		return []models.Product{}, nil
@@ -58,9 +61,53 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 	}
 
 	if products, ok := s.autocompleteMeili(query, limit); ok && len(products) > 0 {
+		s.backfillProductImages(products)
 		return products, nil
 	}
 	return s.autocompleteDB(query, limit)
+}
+
+// backfillProductImages, Meili'den image_url'siz dönen ürünlere DB'den ilk
+// görseli yapıştırır. is_primary varsa onu, yoksa sort_order/id sıralamasıyla
+// ilkini seçer.
+func (s *SearchService) backfillProductImages(products []models.Product) {
+	missing := make([]uint64, 0)
+	for _, p := range products {
+		if len(p.Images) == 0 {
+			missing = append(missing, p.ID)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	type imgRow struct {
+		ProductID uint64
+		ImageURL  string
+	}
+	var rows []imgRow
+	if err := s.db.
+		Table("product_images").
+		Select("product_id, image_url").
+		Where("product_id IN ?", missing).
+		Order("product_id ASC, is_primary DESC, sort_order ASC, id ASC").
+		Find(&rows).Error; err != nil || len(rows) == 0 {
+		return
+	}
+	first := map[uint64]string{}
+	for _, r := range rows {
+		if _, ok := first[r.ProductID]; !ok {
+			first[r.ProductID] = r.ImageURL
+		}
+	}
+	for i := range products {
+		if len(products[i].Images) == 0 {
+			if url, ok := first[products[i].ID]; ok {
+				products[i].Images = []models.ProductImage{
+					{ProductID: products[i].ID, ImageURL: url, IsPrimary: true},
+				}
+			}
+		}
+	}
 }
 
 // -----------------------------------------------------
