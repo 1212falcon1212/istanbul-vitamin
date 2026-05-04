@@ -75,8 +75,11 @@ if [[ "$SKIP_FRONTEND" != "true" && "$FRONTEND_CHANGED" == "true" ]]; then
   # root. The next build runs as the deploy user, which then can't overwrite
   # those cache files. Reclaim ownership before building so turbopack can
   # write into .next without "Permission denied".
+  #
+  # NOT: Sudoers absolute path eşleşmesiyle çalışıyor; göreli `.next`
+  # kullanırsak sudo izin vermiyor ve EACCES ile build başarısız oluyor.
   if [[ -d .next ]]; then
-    sudo /usr/bin/chown -R istanbulvitamin:istanbulvitamin .next || true
+    sudo /usr/bin/chown -R istanbulvitamin:istanbulvitamin "$FRONTEND_DIR/.next" || true
   fi
 
   if grep -qE '^frontend/(package\.json|package-lock\.json)$' <<<"$CHANGED"; then
