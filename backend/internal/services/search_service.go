@@ -67,9 +67,10 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 	return s.autocompleteDB(query, limit)
 }
 
-// backfillProductImages, Meili'den image_url'siz dönen ürünlere DB'den ilk
-// görseli yapıştırır. is_primary varsa onu, yoksa sort_order/id sıralamasıyla
-// ilkini seçer.
+// backfillProductImages, dönen ürünlerden Images slice'ı boş olanlara DB'den
+// ilk görseli yapıştırır. is_primary varsa onu, yoksa sort_order/id sıralamasıyla
+// ilkini seçer. ProductImage modeli üzerinden çalışıyoruz; Table()+anonymous
+// struct yolu GORM column→field mapping'inde sessizce boş slice dönüyordu.
 func (s *SearchService) backfillProductImages(products []models.Product) {
 	missing := make([]uint64, 0)
 	for _, p := range products {
@@ -80,31 +81,23 @@ func (s *SearchService) backfillProductImages(products []models.Product) {
 	if len(missing) == 0 {
 		return
 	}
-	type imgRow struct {
-		ProductID uint64
-		ImageURL  string
-	}
-	var rows []imgRow
+	var rows []models.ProductImage
 	if err := s.db.
-		Table("product_images").
-		Select("product_id, image_url").
 		Where("product_id IN ?", missing).
 		Order("product_id ASC, is_primary DESC, sort_order ASC, id ASC").
 		Find(&rows).Error; err != nil || len(rows) == 0 {
 		return
 	}
-	first := map[uint64]string{}
+	first := make(map[uint64]models.ProductImage, len(missing))
 	for _, r := range rows {
 		if _, ok := first[r.ProductID]; !ok {
-			first[r.ProductID] = r.ImageURL
+			first[r.ProductID] = r
 		}
 	}
 	for i := range products {
 		if len(products[i].Images) == 0 {
-			if url, ok := first[products[i].ID]; ok {
-				products[i].Images = []models.ProductImage{
-					{ProductID: products[i].ID, ImageURL: url, IsPrimary: true},
-				}
+			if img, ok := first[products[i].ID]; ok {
+				products[i].Images = []models.ProductImage{img}
 			}
 		}
 	}
