@@ -54,14 +54,19 @@ func (c *Client) SaveAddress(ctx context.Context, req SaveAddressRequest) (strin
 	}
 	resultCode := extractBetween(call.Response, "<ResultCode>", "</ResultCode>")
 	message := extractBetween(call.Response, "<Message>", "</Message>")
-	addressID := extractBetween(call.Response, "<AddressId>", "</AddressId>")
-	if addressID == "" {
-		// Bazı sürümlerde alan adı farklı dönüyor.
-		addressID = extractBetween(call.Response, "<addressId>", "</addressId>")
-	}
+	addressID := firstNonEmpty(
+		extractBetween(call.Response, "<AddressId>", "</AddressId>"),
+		extractBetween(call.Response, "<addressId>", "</addressId>"),
+		extractBetween(call.Response, "<ResultId>", "</ResultId>"),
+		extractBetween(call.Response, "<CustomerAddressId>", "</CustomerAddressId>"),
+	)
 
-	if addressID == "" || (resultCode != "" && resultCode != "0") {
+	// Aras'ın gerçek başarı kontrolü: ResultCode 0 veya 1 (uygulama "1=Kayıt başarılı"
+	// dönüyor; "0" da bazı çağrılarda success). Kalan kodlar hata.
+	if resultCode != "" && resultCode != "0" && resultCode != "1" {
 		return "", call, fmt.Errorf("aras SaveAddress başarısız: code=%s msg=%s", resultCode, message)
 	}
+	// AddressId yanıttan parse edilememiş olabilir; çağıran zaten ham yanıtı (RawXML)
+	// audit log'da görüyor. Boş string'i hata saymıyoruz çünkü Aras kayıt başarılı dedi.
 	return addressID, call, nil
 }

@@ -103,7 +103,8 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
 		ResultCode: extractBetween(call.Response, "<ResultCode>", "</ResultCode>"),
 		Message:    extractBetween(call.Response, "<Message>", "</Message>"),
 	}
-	if resp.ResultCode != "0" && resp.ResultCode != "" {
+	// Aras "0" ve "1" başarılı kabul ediyor (kayıt oluşturuldu / güncellendi).
+	if resp.ResultCode != "" && resp.ResultCode != "0" && resp.ResultCode != "1" {
 		return resp, call, fmt.Errorf("aras SetOrder başarısız: code=%s msg=%s", resp.ResultCode, resp.Message)
 	}
 	return resp, call, nil

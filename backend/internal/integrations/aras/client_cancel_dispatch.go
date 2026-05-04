@@ -46,7 +46,8 @@ func (c *Client) CancelDispatch(ctx context.Context, integrationCode string) (Ca
 	if resp.ResultCode == "999" || resp.ResultCode == "-1" {
 		return resp, call, ErrCannotCancel
 	}
-	if resp.ResultCode != "0" && resp.ResultCode != "" {
+	// 0 ve 1 başarı (Aras "1=Başarılı" stringini kullanıyor pratikte).
+	if resp.ResultCode != "" && resp.ResultCode != "0" && resp.ResultCode != "1" {
 		return resp, call, fmt.Errorf("aras CancelDispatch başarısız: code=%s msg=%s", resp.ResultCode, resp.Message)
 	}
 	return resp, call, nil
