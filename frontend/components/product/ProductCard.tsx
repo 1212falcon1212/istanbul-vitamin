@@ -103,21 +103,25 @@ export default function ProductCard({
           delayClass
         )}
       >
-        {/* Image */}
-        <Link
-          href={`/urun/${product.slug}`}
-          className="relative block aspect-square bg-white overflow-hidden"
-        >
-          <Image
-            src={imageUrl}
-            alt={primaryImage?.alt_text || product.name}
-            fill
-            sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
-            className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
-            unoptimized={imageUrl.includes("/uploads/")}
-          />
+        {/* Image — Link ve button kardeş; <button> hiçbir zaman <a>'nın
+            içinde olmamalı (HTML5 invalid → hydration mismatch → ilk
+            tıklama sessizce yutuluyor). */}
+        <div className="relative aspect-square bg-white overflow-hidden">
+          <Link
+            href={`/urun/${product.slug}`}
+            className="absolute inset-0 block z-0"
+          >
+            <Image
+              src={imageUrl}
+              alt={primaryImage?.alt_text || product.name}
+              fill
+              sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
+              className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+              unoptimized={imageUrl.includes("/uploads/")}
+            />
+          </Link>
           {discount > 0 && (
-            <span className="absolute top-2 left-2 bg-accent-rose text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <span className="absolute top-2 left-2 z-10 bg-accent-rose text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
               %{discount}
             </span>
           )}
@@ -129,7 +133,7 @@ export default function ProductCard({
               handleToggleFav();
             }}
             className={cn(
-              "absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center border transition-all",
+              "absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center border transition-all",
               favored
                 ? "text-accent-rose border-red-200"
                 : "text-text-secondary border-border hover:text-accent-rose hover:border-red-200"
@@ -151,7 +155,7 @@ export default function ProductCard({
               />
             </svg>
           </button>
-        </Link>
+        </div>
 
         {/* Info */}
         <div className="p-3 flex flex-col gap-1 border-t border-border">
