@@ -24,15 +24,15 @@ func (c *Client) QueryTracking(ctx context.Context, trackingNo string) (QueryRes
 	)
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
     <GetQueryXML xmlns="http://tempuri.org/">
       <queryType>1</queryType>
       <loginInfo>%s</loginInfo>
       <queryInfo>%s</queryInfo>
     </GetQueryXML>
-  </soap12:Body>
-</soap12:Envelope>`, loginInfo, queryInfo)
+  </soap:Body>
+</soap:Envelope>`, loginInfo, queryInfo)
 
 	call := c.post(ctx, c.cfg.IntegrationURL(), "http://tempuri.org/GetQueryXML", body)
 	if call.Err != nil {

@@ -28,15 +28,12 @@ func NewClient(cfg Config) *Client {
 		SetRetryCount(2).
 		SetRetryWaitTime(500 * time.Millisecond).
 		SetRetryMaxWaitTime(3 * time.Second)
-	// 5xx ve timeout için retry — 4xx işletmesel hata, retry yapma.
+	// SetOrder gibi yazma çağrılarında retry yan etkili olabilir (Aras 20 update
+	// limiti var). Bu yüzden sadece network/IO seviyesindeki hatalarda yeniden
+	// deniyoruz — HTTP 500 dönmüş ise body büyük ihtimalle SOAP fault içeriyordur,
+	// retry zararlı.
 	r.AddRetryCondition(func(resp *resty.Response, err error) bool {
-		if err != nil {
-			return true
-		}
-		if resp == nil {
-			return false
-		}
-		return resp.StatusCode() >= 500
+		return err != nil && resp == nil
 	})
 	if cfg.PayorTypeCode == "" {
 		cfg.PayorTypeCode = "1"
@@ -63,12 +60,20 @@ type SOAPCall struct {
 }
 
 // post SOAP envelope'ı POST'lar; ham response body'sini döner.
+//
+// .NET ASMX servisleri SOAP 1.1 standardına göre `SOAPAction` header'ının
+// **tırnak içinde** olmasını bekler. Tırnak yoksa bazı sürümler 500 atar; bu
+// nedenle action argümanını her zaman çift tırnak ile sarıyoruz.
+//
+// HTTP 500 yanıtlarda body genelde SOAP `<Fault>` envelope'u içerir; bu durumda
+// faultstring'i çıkarıp anlamlı bir hata olarak döndürüyoruz, ham response'u
+// audit log için olduğu gibi taşıyoruz.
 func (c *Client) post(ctx context.Context, url, soapAction, body string) SOAPCall {
 	out := SOAPCall{URL: url, SOAPAction: soapAction, Request: body}
 	resp, err := c.http.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "text/xml; charset=utf-8").
-		SetHeader("SOAPAction", soapAction).
+		SetHeader("SOAPAction", `"`+soapAction+`"`).
 		SetBody(body).
 		Post(url)
 	if resp != nil {
@@ -80,12 +85,21 @@ func (c *Client) post(ctx context.Context, url, soapAction, body string) SOAPCal
 		return out
 	}
 	if resp.StatusCode() >= 500 {
-		out.Err = fmt.Errorf("aras sunucu hatası HTTP %d: %s", resp.StatusCode(), truncate(out.Response, 200))
+		// Body SOAP envelope ise faultstring'i çekip daha okunaklı bir mesaj döndür.
+		if fault := extractBetween(out.Response, "<faultstring", "</faultstring>"); fault != "" {
+			// "<faultstring>" ile başladık ama bazen <faultstring xml:lang="en">…</faultstring> şeklinde
+			// — kapanış '>' karakteri sonrasından başlat:
+			if idx := strings.Index(fault, ">"); idx >= 0 {
+				fault = strings.TrimSpace(fault[idx+1:])
+			}
+			out.Err = fmt.Errorf("aras soap fault (HTTP %d): %s", resp.StatusCode(), fault)
+		} else {
+			out.Err = fmt.Errorf("aras sunucu hatası HTTP %d: %s", resp.StatusCode(), truncate(out.Response, 1500))
+		}
 		return out
 	}
 	if resp.StatusCode() >= 400 {
-		// SOAP fault gelmesi muhtemel — body'yi ham döndürüyoruz, parse caller'da.
-		out.Err = fmt.Errorf("aras 4xx HTTP %d: %s", resp.StatusCode(), truncate(out.Response, 200))
+		out.Err = fmt.Errorf("aras 4xx HTTP %d: %s", resp.StatusCode(), truncate(out.Response, 1500))
 		return out
 	}
 	return out

@@ -26,8 +26,8 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
 	pieces := buildPieceDetailsXML(req.PieceDetails)
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
     <SetOrder xmlns="http://tempuri.org/">
       <UserName>%s</UserName>
       <Password>%s</Password>
@@ -44,8 +44,8 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
       <Description>%s</Description>
       %s
     </SetOrder>
-  </soap12:Body>
-</soap12:Envelope>`,
+  </soap:Body>
+</soap:Envelope>`,
 		xmlEscape(c.cfg.UserName),
 		xmlEscape(c.cfg.Password),
 		xmlEscape(req.IntegrationCode),

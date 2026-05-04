@@ -14,8 +14,8 @@ func (c *Client) SaveAddress(ctx context.Context, req SaveAddressRequest) (strin
 	}
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
     <SaveAddress xmlns="http://tempuri.org/">
       <UserName>%s</UserName>
       <Password>%s</Password>
@@ -27,8 +27,8 @@ func (c *Client) SaveAddress(ctx context.Context, req SaveAddressRequest) (strin
       <CityName>%s</CityName>
       <TownName>%s</TownName>
     </SaveAddress>
-  </soap12:Body>
-</soap12:Envelope>`,
+  </soap:Body>
+</soap:Envelope>`,
 		xmlEscape(c.cfg.UserName),
 		xmlEscape(c.cfg.Password),
 		xmlEscape(req.CustomerAddressID),
