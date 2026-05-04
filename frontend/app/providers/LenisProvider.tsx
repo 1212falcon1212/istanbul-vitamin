@@ -1,26 +1,16 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 interface LenisProviderProps {
   children: ReactNode;
 }
 
 /**
- * Enables CSS-based smooth scrolling globally.
- *
- * This acts as a lightweight drop-in for Lenis smooth scroll without
- * adding an extra runtime dependency. Swap the body of useEffect for
- * a real Lenis instance if the package is added in the future.
+ * No-op wrapper. Önceden useEffect ile `scrollBehavior = "smooth"` set
+ * ediyordu; Safari'de Link tıklamasından sonra animasyonlu scroll bazen
+ * tıklamanın algılanmadığı hissini veriyordu. Smooth scroll'u kaldırdık.
  */
 export default function LenisProvider({ children }: LenisProviderProps) {
-  useEffect(() => {
-    document.documentElement.style.scrollBehavior = "smooth";
-
-    return () => {
-      document.documentElement.style.scrollBehavior = "";
-    };
-  }, []);
-
   return <>{children}</>;
 }

@@ -47,7 +47,11 @@ func env(key, def string) string {
 	return def
 }
 
-var deployMu sync.Mutex
+var (
+	deployMu      sync.Mutex
+	deployPending bool
+	deployPendMu  sync.Mutex
+)
 
 func main() {
 	addr := env("WEBHOOK_ADDR", ":9000")
@@ -141,13 +145,38 @@ func verifySignature(header string, body []byte, secret string) error {
 	return nil
 }
 
+// runDeploy serializes deploys: at most one runs at a time. If a webhook
+// arrives while a deploy is in progress, we record a pending flag instead
+// of dropping it — when the active deploy finishes we run one more pass
+// (which deploy.sh will treat as a normal "pull origin/main" so it picks
+// up every commit pushed during the previous run). Without this, two
+// pushes within ~30 seconds caused the second commit to never reach prod.
 func runDeploy(script string) {
 	if !deployMu.TryLock() {
-		log.Print("deploy already in progress — skipping")
+		deployPendMu.Lock()
+		deployPending = true
+		deployPendMu.Unlock()
+		log.Print("deploy already in progress — queued one more pass")
 		return
 	}
-	defer deployMu.Unlock()
 
+	for {
+		execDeploy(script)
+
+		deployPendMu.Lock()
+		shouldRerun := deployPending
+		deployPending = false
+		deployPendMu.Unlock()
+
+		if !shouldRerun {
+			break
+		}
+		log.Print("running queued deploy for commits arrived during last run")
+	}
+	deployMu.Unlock()
+}
+
+func execDeploy(script string) {
 	cmd := exec.Command("/usr/bin/env", "bash", script)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
