@@ -176,6 +176,17 @@ func (s *Service) CreateShipment(ctx context.Context, orderID uint64) error {
 		}
 	}
 
+	// Aras `SaveAddress` API'sinin dönen ID'si "adres defteri" kaydıdır, gerçek
+	// "Sevk Adresi" değil — bu yüzden test/early prod'da SenderAccountAddressID
+	// olarak gönderilirse Aras "1006 sevk adresi bulunamadı" döner.
+	// Gerçek Sevk Adres ID'leri Aras Bölge Satış Temsilcisi tarafından tanımlanıyor.
+	// Boş gönderdiğimizde Aras varsayılan sevk adresini kullanır.
+	senderAddrID := strings.TrimSpace(c.cfg.SenderAddressID)
+	// SaveAddress GUID formatı (32 hex char) → adres defteri ID'si, boş geç.
+	if len(senderAddrID) == 32 && !strings.ContainsAny(senderAddrID, "-_/") {
+		senderAddrID = ""
+	}
+
 	setReq := SetOrderRequest{
 		IntegrationCode:        integrationCode,
 		TradingWaybillNumber:   "", // Aras üretsin
@@ -186,7 +197,7 @@ func (s *Service) CreateShipment(ctx context.Context, orderID uint64) error {
 		ReceiverTownName:       order.ShippingDistrict,
 		PayorTypeCode:          c.cfg.PayorTypeCode,
 		IsWorldWide:            "0",
-		SenderAccountAddressID: c.cfg.SenderAddressID,
+		SenderAccountAddressID: senderAddrID,
 		Description:            fmt.Sprintf("Sipariş #%s — %d kalem", order.OrderNumber, len(order.Items)),
 		PieceDetails:           parcels,
 	}
