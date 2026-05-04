@@ -147,7 +147,7 @@ func (h *ArasHandler) TestConnection(c *fiber.Ctx) error {
 		CustomerAddressID: "TEST-CONN-" + strconv.FormatInt(time.Now().Unix(), 10),
 		Name:              "Test Bağlantı",
 		CompleteAddress:   "Test adres",
-		PhoneNumber:       "5550000000",
+		PhoneNumber:       "02164158766", // 11 hane, Aras formatı
 		EMail:             "test@test.com",
 		CityName:          "İSTANBUL",
 		TownName:          "BEYKOZ",

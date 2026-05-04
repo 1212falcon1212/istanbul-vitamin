@@ -6,7 +6,7 @@ import "errors"
 var (
 	ErrConfigDisabled = errors.New("aras kargo entegrasyonu kapalı")
 	ErrConfigMissing  = errors.New("aras kargo kimlik bilgileri eksik")
-	ErrInvalidPhone   = errors.New("alıcı telefonu geçersiz (10 hane sayısal olmalı)")
+	ErrInvalidPhone   = errors.New("telefon numarası geçersiz (TR formatı: 11 hane veya +90 prefix'li 12 hane)")
 	ErrAlreadyShipped = errors.New("sipariş zaten kargoya verilmiş")
 	ErrCannotCancel   = errors.New("kargo zaten irsaliye kesildiği için iptal edilemiyor")
 	ErrNoTracking     = errors.New("kargo takip numarası henüz oluşmadı")
