@@ -7,6 +7,9 @@ import (
 
 // GetOrderWithIntegrationCode IntegrationCode ile gönderiyi sorgular.
 // SetOrder sonrası "KARGO TAKİP NO" değerini almak için bu çağrı yapılır.
+//
+// Aras imzası: GetOrderWithIntegrationCode(integrationCode, userName, password) — auth lowercase
+// olarak top-level parametre. UserName/Password içte tekrar gönderilmiyor.
 func (c *Client) GetOrderWithIntegrationCode(ctx context.Context, integrationCode string) (GetOrderResponse, SOAPCall, error) {
 	if err := c.validateConfig(); err != nil {
 		return GetOrderResponse{}, SOAPCall{}, err
@@ -16,15 +19,15 @@ func (c *Client) GetOrderWithIntegrationCode(ctx context.Context, integrationCod
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
     <GetOrderWithIntegrationCode xmlns="http://tempuri.org/">
-      <UserName>%s</UserName>
-      <Password>%s</Password>
-      <IntegrationCode>%s</IntegrationCode>
+      <integrationCode>%s</integrationCode>
+      <userName>%s</userName>
+      <password>%s</password>
     </GetOrderWithIntegrationCode>
   </soap:Body>
 </soap:Envelope>`,
+		xmlEscape(integrationCode),
 		xmlEscape(c.cfg.UserName),
 		xmlEscape(c.cfg.Password),
-		xmlEscape(integrationCode),
 	)
 
 	call := c.post(ctx, c.cfg.ServiceURL(), "http://tempuri.org/GetOrderWithIntegrationCode", body)
@@ -43,7 +46,6 @@ func (c *Client) GetOrderWithIntegrationCode(ctx context.Context, integrationCod
 	}
 	// Aras yanıtında "KARGO TAKİP NO" alanı bazen ayrı tag (TrackingNumber), bazen
 	// XML tablosunda <KARGO_TAKIP_NO>...</KARGO_TAKIP_NO> şeklinde geliyor.
-	// İki olasılığı da deneyelim.
 	resp.TrackingNumber = extractBetween(call.Response, "<TrackingNumber>", "</TrackingNumber>")
 	if resp.TrackingNumber == "" {
 		resp.TrackingNumber = extractBetween(call.Response, "<KARGO_TAKIP_NO>", "</KARGO_TAKIP_NO>")
