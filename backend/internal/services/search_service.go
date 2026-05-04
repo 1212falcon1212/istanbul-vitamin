@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"log"
 	"os"
 	"strings"
 
@@ -61,15 +60,11 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 		limit = 5
 	}
 
-	products, ok := s.autocompleteMeili(query, limit)
-	log.Printf("[search] autocomplete q=%q meili_ok=%v meili_count=%d", query, ok, len(products))
-	if ok && len(products) > 0 {
+	if products, ok := s.autocompleteMeili(query, limit); ok && len(products) > 0 {
 		s.backfillProductImages(products)
 		return products, nil
 	}
-	res, err := s.autocompleteDB(query, limit)
-	log.Printf("[search] autocomplete q=%q db_count=%d err=%v", query, len(res), err)
-	return res, err
+	return s.autocompleteDB(query, limit)
 }
 
 // backfillProductImages, dönen ürünlerden Images slice'ı boş olanlara DB'den
@@ -86,12 +81,10 @@ func (s *SearchService) backfillProductImages(products []models.Product) {
 		return
 	}
 	var rows []models.ProductImage
-	err := s.db.
+	if err := s.db.
 		Where("product_id IN ?", missing).
 		Order("product_id ASC, is_primary DESC, sort_order ASC, id ASC").
-		Find(&rows).Error
-	log.Printf("[search] backfill: missing=%v rows=%d err=%v", missing, len(rows), err)
-	if err != nil || len(rows) == 0 {
+		Find(&rows).Error; err != nil || len(rows) == 0 {
 		return
 	}
 	first := make(map[uint64]models.ProductImage, len(missing))
@@ -298,7 +291,10 @@ func (s *SearchService) autocompleteDB(query string, limit int) ([]models.Produc
 		Where("is_active = ?", true).
 		Where("MATCH(name, short_description) AGAINST(? IN BOOLEAN MODE)", booleanTerm).
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
+			// NOT: Limit(1) buraya konursa tüm ürünler için TOPLAM 1 satır
+			// dönüyor (GORM'un preload'da global limit uyguluyor) — frontend
+			// images[0]'i kullandığı için hepsini çekmek zararsız.
+			return db.Order("is_primary DESC, sort_order ASC, id ASC")
 		}).
 		Order(gorm.Expr("MATCH(name, short_description) AGAINST(? IN BOOLEAN MODE) DESC, sold_count DESC", booleanTerm)).
 		Limit(limit).
@@ -318,7 +314,10 @@ func (s *SearchService) autocompleteDBLike(query string, limit int) ([]models.Pr
 		Select("id, name, slug, price, compare_price").
 		Where("is_active = ? AND name LIKE ?", true, searchTerm).
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
+			// NOT: Limit(1) buraya konursa tüm ürünler için TOPLAM 1 satır
+			// dönüyor (GORM'un preload'da global limit uyguluyor) — frontend
+			// images[0]'i kullandığı için hepsini çekmek zararsız.
+			return db.Order("is_primary DESC, sort_order ASC, id ASC")
 		}).
 		Order("sold_count DESC").
 		Limit(limit).
