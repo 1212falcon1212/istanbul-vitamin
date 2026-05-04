@@ -182,8 +182,10 @@ func (s *SearchService) searchDB(query string, page, perPage int) ([]models.Prod
 		Where("is_active = ?", true).
 		Where("MATCH(name, short_description) AGAINST(? IN NATURAL LANGUAGE MODE)", query)
 
+	// FULLTEXT index prod'da bazen mevcut değil (eski schema, partial migration).
+	// MATCH AGAINST hata verirse DB tamamen geri dönmesin — LIKE fallback'ine düş.
 	if err := dbQuery.Count(&total).Error; err != nil {
-		return nil, 0, errors.New("arama sonuçları sayılırken bir hata oluştu")
+		return s.searchDBLike(query, page, perPage)
 	}
 	offset := utils.GetOffset(page, perPage)
 	err := dbQuery.
@@ -196,7 +198,7 @@ func (s *SearchService) searchDB(query string, page, perPage int) ([]models.Prod
 		Limit(perPage).
 		Find(&products).Error
 	if err != nil {
-		return nil, 0, errors.New("arama yapılırken bir hata oluştu")
+		return s.searchDBLike(query, page, perPage)
 	}
 	return products, total, nil
 }
@@ -256,7 +258,8 @@ func (s *SearchService) autocompleteDB(query string, limit int) ([]models.Produc
 		Limit(limit).
 		Find(&products).Error
 	if err != nil {
-		return nil, errors.New("otomatik tamamlama sırasında bir hata oluştu")
+		// FULLTEXT yoksa LIKE'a düş.
+		return s.autocompleteDBLike(query, limit)
 	}
 	return products, nil
 }
