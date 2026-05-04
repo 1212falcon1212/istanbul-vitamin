@@ -192,12 +192,10 @@ function BrandIllustration() {
   return (
     <svg
       viewBox="0 0 320 220"
-      width="100%"
-      height="auto"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Dermokozmetik ürün illüstrasyonu"
-      className="max-w-[360px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
+      className="w-full h-auto max-w-[360px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
     >
       <defs>
         <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%">

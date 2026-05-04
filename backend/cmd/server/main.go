@@ -170,12 +170,29 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 		},
 	})
 
+	// /reset-password ayrı kova: tokenlı (email'den gelen) bir akış olduğu için
+	// login bucket'ı ile paylaştırırsak, "5 yanlış şifre denedim, şimdi reset
+	// edeyim" diyen kullanıcı 1dk boyunca reset linkine basınca 429 yiyor.
+	resetLimiter := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 10 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"success": false,
+				"error":   "Çok fazla istek. Lütfen birkaç dakika sonra tekrar deneyin.",
+			})
+		},
+	})
+
 	auth.Post("/register", authLimiter, authHandler.Register)
 	auth.Post("/login", authLimiter, authHandler.Login)
 	auth.Post("/admin/login", authLimiter, authHandler.AdminLogin)
 	auth.Post("/refresh", authHandler.RefreshToken)
 	auth.Post("/forgot-password", forgotLimiter, authHandler.ForgotPassword)
-	auth.Post("/reset-password", authLimiter, authHandler.ResetPassword)
+	auth.Post("/reset-password", resetLimiter, authHandler.ResetPassword)
 	auth.Post("/verify-email", authHandler.VerifyEmail)
 	auth.Get("/verify-email", authHandler.VerifyEmail)
 
