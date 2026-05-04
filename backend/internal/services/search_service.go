@@ -61,11 +61,15 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 		limit = 5
 	}
 
-	if products, ok := s.autocompleteMeili(query, limit); ok && len(products) > 0 {
+	products, ok := s.autocompleteMeili(query, limit)
+	log.Printf("[search] autocomplete q=%q meili_ok=%v meili_count=%d", query, ok, len(products))
+	if ok && len(products) > 0 {
 		s.backfillProductImages(products)
 		return products, nil
 	}
-	return s.autocompleteDB(query, limit)
+	res, err := s.autocompleteDB(query, limit)
+	log.Printf("[search] autocomplete q=%q db_count=%d err=%v", query, len(res), err)
+	return res, err
 }
 
 // backfillProductImages, dönen ürünlerden Images slice'ı boş olanlara DB'den
