@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"log"
 	"os"
 	"strings"
 
@@ -69,8 +70,7 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 
 // backfillProductImages, dönen ürünlerden Images slice'ı boş olanlara DB'den
 // ilk görseli yapıştırır. is_primary varsa onu, yoksa sort_order/id sıralamasıyla
-// ilkini seçer. ProductImage modeli üzerinden çalışıyoruz; Table()+anonymous
-// struct yolu GORM column→field mapping'inde sessizce boş slice dönüyordu.
+// ilkini seçer.
 func (s *SearchService) backfillProductImages(products []models.Product) {
 	missing := make([]uint64, 0)
 	for _, p := range products {
@@ -82,10 +82,12 @@ func (s *SearchService) backfillProductImages(products []models.Product) {
 		return
 	}
 	var rows []models.ProductImage
-	if err := s.db.
+	err := s.db.
 		Where("product_id IN ?", missing).
 		Order("product_id ASC, is_primary DESC, sort_order ASC, id ASC").
-		Find(&rows).Error; err != nil || len(rows) == 0 {
+		Find(&rows).Error
+	log.Printf("[search] backfill: missing=%v rows=%d err=%v", missing, len(rows), err)
+	if err != nil || len(rows) == 0 {
 		return
 	}
 	first := make(map[uint64]models.ProductImage, len(missing))
