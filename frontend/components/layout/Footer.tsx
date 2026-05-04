@@ -97,7 +97,7 @@ const TRUST_ITEMS = [
 const PAYMENT_LOGOS = ["Visa", "Mastercard", "Troy", "PayTR", "Havale/EFT"];
 
 export default function Footer() {
-  const { settings } = useSettings();
+  const { settings, isLoading: settingsLoading } = useSettings();
   const logoUrl = settings.site_logo_url_dark
     ? resolveImageUrl(settings.site_logo_url_dark)
     : settings.site_logo_url
@@ -165,6 +165,8 @@ export default function Footer() {
                   alt={siteName}
                   className="h-12 w-auto object-contain bg-white rounded-lg p-2"
                 />
+              ) : settingsLoading ? (
+                <span className="block h-12 w-40" aria-hidden />
               ) : (
                 <span className="font-display text-2xl text-white">
                   İstanbul

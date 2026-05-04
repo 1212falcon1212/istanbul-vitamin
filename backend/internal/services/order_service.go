@@ -28,13 +28,14 @@ func (s *OrderService) SetInvoiceTrigger(fn func(orderID uint64)) {
 // Create yeni siparis olusturur. Sepet ogelerini siparis kalemlerine kopyalar, stok duser, sepet temizlenir.
 func (s *OrderService) Create(order *models.Order, cartID uint64) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// Sepeti getir
+		// Sepeti getir — primary image yoksa snapshot boş kalmasın diye sort_order'a
+		// göre ilk kaydı alıyoruz; primary varsa zaten sort_order=0 olur.
 		var cart models.Cart
 		err := tx.
 			Preload("Items").
 			Preload("Items.Product").
 			Preload("Items.Product.Images", func(db *gorm.DB) *gorm.DB {
-				return db.Where("is_primary = ?", true).Limit(1)
+				return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
 			}).
 			Preload("Items.Variant").
 			First(&cart, cartID).Error
@@ -190,7 +191,62 @@ func (s *OrderService) GetByID(id uint64, userID *uint64) (*models.Order, error)
 		return nil, errors.New("sipariş getirilirken bir hata oluştu")
 	}
 
+	s.backfillItemImages([]models.Order{order})
 	return &order, nil
+}
+
+// backfillItemImages eski siparişlerde snapshot ProductImage boş kalmış olabilir
+// (ürünün primary image'i işaretlenmemişse Create sırasında "" yazılıyordu).
+// Görüntülemede boş olanları, ürünün mevcut ilk image'ı ile dolduruyoruz —
+// DB'ye kalıcı yazmıyoruz; yeni siparişler zaten Create yolunda doluyor.
+func (s *OrderService) backfillItemImages(orders []models.Order) {
+	missing := map[uint64]struct{}{}
+	for i := range orders {
+		for _, it := range orders[i].Items {
+			if it.ProductImage == "" && it.ProductID != nil {
+				missing[*it.ProductID] = struct{}{}
+			}
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	ids := make([]uint64, 0, len(missing))
+	for id := range missing {
+		ids = append(ids, id)
+	}
+	type imgRow struct {
+		ProductID uint64
+		ImageURL  string
+	}
+	var rows []imgRow
+	// Her product_id için (is_primary DESC, sort_order ASC) sıralamasındaki ilk
+	// image'i döndüren bir alt-sorgu kullanmak yerine, hepsini çekip Go'da seçiyoruz —
+	// MySQL ANY_VALUE/JOIN'siz, basit ve indexli bir sorgu.
+	if err := s.db.
+		Table("product_images").
+		Select("product_id, image_url").
+		Where("product_id IN ?", ids).
+		Order("product_id ASC, is_primary DESC, sort_order ASC, id ASC").
+		Find(&rows).Error; err != nil || len(rows) == 0 {
+		return
+	}
+	first := map[uint64]string{}
+	for _, r := range rows {
+		if _, ok := first[r.ProductID]; !ok {
+			first[r.ProductID] = r.ImageURL
+		}
+	}
+	for i := range orders {
+		for j := range orders[i].Items {
+			it := &orders[i].Items[j]
+			if it.ProductImage == "" && it.ProductID != nil {
+				if url, ok := first[*it.ProductID]; ok {
+					it.ProductImage = url
+				}
+			}
+		}
+	}
 }
 
 // List kullanicinin siparislerini sayfalanmis olarak dondurur.
@@ -216,6 +272,7 @@ func (s *OrderService) List(userID uint64, page, perPage int) ([]models.Order, i
 		return nil, 0, errors.New("siparişler listelenirken bir hata oluştu")
 	}
 
+	s.backfillItemImages(orders)
 	return orders, total, nil
 }
 

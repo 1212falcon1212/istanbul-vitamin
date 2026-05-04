@@ -33,16 +33,18 @@ func NewSearchService(db *gorm.DB) *SearchService {
 const meiliIndex = "istanbulvitamin_products"
 
 // Search Meilisearch üzerinden tam metin arama yapar, başarısız olursa DB LIKE'a düşer.
+//
+// Önemli: Meili erişilebilir ama index boşsa (prod'da hiç indexlenmemişse)
+// 0 sonuç dönüyor ve eskiden DB fallback'i çalışmıyordu — ürünler DB'de var
+// olduğu halde site "sonuç yok" gösteriyordu. total==0 ise DB'ye düşüyoruz.
 func (s *SearchService) Search(query string, page, perPage int) ([]models.Product, int64, error) {
 	if query == "" {
 		return []models.Product{}, 0, nil
 	}
 
-	// Meili önce
-	if products, total, ok := s.searchMeili(query, page, perPage); ok {
+	if products, total, ok := s.searchMeili(query, page, perPage); ok && total > 0 {
 		return products, total, nil
 	}
-	// Fallback: LIKE
 	return s.searchDB(query, page, perPage)
 }
 
@@ -55,7 +57,7 @@ func (s *SearchService) Autocomplete(query string, limit int) ([]models.Product,
 		limit = 5
 	}
 
-	if products, ok := s.autocompleteMeili(query, limit); ok {
+	if products, ok := s.autocompleteMeili(query, limit); ok && len(products) > 0 {
 		return products, nil
 	}
 	return s.autocompleteDB(query, limit)

@@ -39,13 +39,52 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	return c.Next()
 }
 
+// OptionalAuthenticate token varsa parse edip locals'a yerleştirir, yoksa
+// hata döndürmeden devam eder. /cart, /search gibi guest+user ortak akışlarda
+// kullanılır — handler kendi içinde userID/sessionID kontrolü yapar.
+func (m *AuthMiddleware) OptionalAuthenticate(c *fiber.Ctx) error {
+	tokenString := extractTokenFrom(c, "auth_token")
+	if tokenString == "" {
+		return c.Next()
+	}
+	claims := &JWTClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(m.cfg.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return c.Next()
+	}
+	if !passwordTokenStillValid(claims) {
+		return c.Next()
+	}
+	c.Locals("userID", claims.UserID)
+	c.Locals("email", claims.Email)
+	c.Locals("role", claims.Role)
+	return c.Next()
+}
+
 // AdminAuthenticate admin panel oturumlarını doğrular — `admin_token` cookie veya
 // Authorization: Bearer header üzerinden. Rol super_admin/admin/editor değilse reddeder.
+//
+// Eski token'larda (rol claim'i eklenmeden önce üretilmiş) Role boş olabilir;
+// bu durumda admins tablosunda kullanıcıya bakıp rolü oradan tamamlıyoruz.
+// Aksi halde hala geçerli oturuma sahip adminlere 403 dönüyorduk — yeniden
+// login dışında çıkış yolu olmadığı için kullanıcıyı bloke ediyordu.
 func (m *AuthMiddleware) AdminAuthenticate(c *fiber.Ctx) error {
 	if err := m.parseAndSetClaims(c, "admin_token"); err != nil {
 		return err
 	}
 	role, _ := c.Locals("role").(string)
+	if role == "" {
+		userID, _ := c.Locals("userID").(uint64)
+		if userID > 0 && database.DB != nil {
+			var admin models.Admin
+			if err := database.DB.Select("id, role").First(&admin, userID).Error; err == nil {
+				role = admin.Role
+				c.Locals("role", role)
+			}
+		}
+	}
 	switch role {
 	case "super_admin", "admin", "editor":
 		return c.Next()

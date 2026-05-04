@@ -182,6 +182,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 	// Auth middleware (used inline for protected routes)
 	userMiddleware := middleware.NewAuthMiddleware(cfg)
 	requireAuth := userMiddleware.Authenticate
+	optionalAuth := userMiddleware.OptionalAuthenticate
 
 	// User (protected)
 	api.Get("/users/me", requireAuth, authHandler.GetMe)
@@ -244,14 +245,17 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}) {
 	api.Get("/search", searchHandler.Search)
 	api.Get("/search/autocomplete", searchHandler.Autocomplete)
 
-	// Cart
+	// Cart — optionalAuth: token varsa userID locals'a yazılır, yoksa
+	// X-Session-ID üzerinden guest sepetiyle devam edilir. Handler ikisinden
+	// birini bulur. (Önceden coupon endpoint'i auth_token'ı işlemediği için
+	// giriş yapmış kullanıcı X-Session-ID göndermezse 400 dönüyordu.)
 	cartHandler := handlers.NewCartHandler()
-	api.Get("/cart", cartHandler.Get)
-	api.Post("/cart/items", cartHandler.AddItem)
-	api.Put("/cart/items/:id", cartHandler.UpdateItem)
-	api.Delete("/cart/items/:id", cartHandler.RemoveItem)
-	api.Post("/cart/coupon", cartHandler.ApplyCoupon)
-	api.Delete("/cart/coupon", cartHandler.RemoveCoupon)
+	api.Get("/cart", optionalAuth, cartHandler.Get)
+	api.Post("/cart/items", optionalAuth, cartHandler.AddItem)
+	api.Put("/cart/items/:id", optionalAuth, cartHandler.UpdateItem)
+	api.Delete("/cart/items/:id", optionalAuth, cartHandler.RemoveItem)
+	api.Post("/cart/coupon", optionalAuth, cartHandler.ApplyCoupon)
+	api.Delete("/cart/coupon", optionalAuth, cartHandler.RemoveCoupon)
 	api.Post("/cart/merge", requireAuth, cartHandler.Merge)
 
 	// Favorites (protected)

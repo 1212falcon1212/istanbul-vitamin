@@ -16,7 +16,7 @@ interface AuthShellProps {
  * - Desktop: iki kolonlu kart, ekran dikey/yatayda ortalı
  */
 export default function AuthShell({ children, title, subtitle }: AuthShellProps) {
-  const { settings } = useSettings();
+  const { settings, isLoading } = useSettings();
 
   const logoUrl = settings?.site_logo_url
     ? resolveImageUrl(settings.site_logo_url)
@@ -38,7 +38,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
       {/* Top bar */}
       <header className="relative z-10 px-6 md:px-10 py-5 flex items-center justify-between">
-        <Link href="/" className="shrink-0 mr-6">
+        <Link href="/" className="shrink-0 mr-6" aria-label={siteName}>
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -48,6 +48,8 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
               height={40}
               className="h-auto max-h-[40px] object-contain"
             />
+          ) : isLoading ? (
+            <span className="block h-10 w-32" aria-hidden />
           ) : (
             <span className="font-display text-xl md:text-2xl text-text-primary">
               {siteName}
