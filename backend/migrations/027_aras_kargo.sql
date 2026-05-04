@@ -75,16 +75,16 @@ CREATE TABLE IF NOT EXISTS `aras_shipment_logs` (
     INDEX `idx_aras_logs_order` (`order_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `settings` (`key`, `value`, `group`, `created_at`, `updated_at`) VALUES
-    ('aras.enabled',           'false',          'aras_kargo', NOW(), NOW()),
-    ('aras.test_mode',         'true',           'aras_kargo', NOW(), NOW()),
-    ('aras.username',          'neodyum',        'aras_kargo', NOW(), NOW()),
-    ('aras.password',          'nd2580',         'aras_kargo', NOW(), NOW()),
-    ('aras.customer_code',     '1932448851342',  'aras_kargo', NOW(), NOW()),
-    ('aras.sender_address_id', '',               'aras_kargo', NOW(), NOW()),
-    ('aras.payor_type_code',   '1',              'aras_kargo', NOW(), NOW()),
-    ('aras.parcel_kg_limit',   '30',             'aras_kargo', NOW(), NOW()),
-    ('city',                   '',               'contact',    NOW(), NOW()),
-    ('town',                   '',               'contact',    NOW(), NOW()),
-    ('sender_name',            '',               'contact',    NOW(), NOW())
+INSERT INTO `settings` (`key`, `value`, `group`, `updated_at`) VALUES
+    ('aras.enabled',           'false',          'aras_kargo', NOW()),
+    ('aras.test_mode',         'true',           'aras_kargo', NOW()),
+    ('aras.username',          'neodyum',        'aras_kargo', NOW()),
+    ('aras.password',          'nd2580',         'aras_kargo', NOW()),
+    ('aras.customer_code',     '1932448851342',  'aras_kargo', NOW()),
+    ('aras.sender_address_id', '',               'aras_kargo', NOW()),
+    ('aras.payor_type_code',   '1',              'aras_kargo', NOW()),
+    ('aras.parcel_kg_limit',   '30',             'aras_kargo', NOW()),
+    ('city',                   '',               'contact',    NOW()),
+    ('town',                   '',               'contact',    NOW()),
+    ('sender_name',            '',               'contact',    NOW())
 ON DUPLICATE KEY UPDATE `group` = VALUES(`group`), `updated_at` = NOW();
