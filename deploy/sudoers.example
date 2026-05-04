@@ -5,6 +5,8 @@
 istanbulvitamin ALL=(root) NOPASSWD: /bin/systemctl restart istanbulvitamin-api
 istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/pm2 restart istanbulvitamin-web *
 istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/pm2 restart istanbulvitamin-web
-# Allow reclaiming ownership of the Next.js build cache (PM2 runs as root and
-# writes into .next/cache, which would otherwise block the next build).
+istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/pm2 stop istanbulvitamin-web
+# Allow reclaiming ownership of the Next.js build cache and a full wipe before
+# a fresh build (PM2 runs as root and keeps writing into .next at runtime).
 istanbulvitamin ALL=(root) NOPASSWD: /usr/bin/chown -R istanbulvitamin\:istanbulvitamin /home/istanbulvitamin/htdocs/istanbulvitamin.com/app/frontend/.next
+istanbulvitamin ALL=(root) NOPASSWD: /bin/rm -rf /home/istanbulvitamin/htdocs/istanbulvitamin.com/app/frontend/.next

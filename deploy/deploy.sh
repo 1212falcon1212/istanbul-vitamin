@@ -71,15 +71,17 @@ if [[ "$SKIP_FRONTEND" != "true" && "$FRONTEND_CHANGED" == "true" ]]; then
   log "building frontend (Next.js)"
   cd "$FRONTEND_DIR"
 
-  # PM2 runs the frontend as root and writes runtime data into .next/cache as
-  # root. The next build runs as the deploy user, which then can't overwrite
-  # those cache files. Reclaim ownership before building so turbopack can
-  # write into .next without "Permission denied".
-  #
-  # NOT: Sudoers absolute path eşleşmesiyle çalışıyor; göreli `.next`
-  # kullanırsak sudo izin vermiyor ve EACCES ile build başarısız oluyor.
+  # PM2 runs the frontend as root (shared daemon with other sites) and keeps
+  # writing into .next at runtime — sitemap.xml, RSC cache vb. Aşağıdaki sıra
+  # zorunlu: önce pm2'yi durdur, ardından root-owned tüm .next'i tamamen sil,
+  # sonra istanbulvitamin user'ıyla yeniden build et. Bu yapılmazsa pm2 build
+  # esnasında .next/server/app altına root olarak dosya yazıyor ve turbopack
+  # mkdir/write sırasında EACCES alıp deploy düşüyor.
+  log "stopping pm2 before build"
+  sudo /usr/bin/pm2 stop "$PM2_FRONTEND_NAME" || true
+
   if [[ -d .next ]]; then
-    sudo /usr/bin/chown -R istanbulvitamin:istanbulvitamin "$FRONTEND_DIR/.next" || true
+    sudo /bin/rm -rf "$FRONTEND_DIR/.next" || true
   fi
 
   if grep -qE '^frontend/(package\.json|package-lock\.json)$' <<<"$CHANGED"; then
