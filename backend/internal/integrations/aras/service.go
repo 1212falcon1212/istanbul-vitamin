@@ -169,8 +169,15 @@ func (s *Service) CreateShipment(ctx context.Context, orderID uint64) error {
 	}
 	pieces := BarcodesFromIntegrationCode(integrationCode, parcelCount)
 	parcels := make([]PieceDetail, len(pieces))
+	// Aras PieceDetail için Weight ve VolumetricWeight (desi) gerekli; eksikse 70023/70024 atar.
+	// Ürün modelinde volume henüz tutulmuyor; küçük paket varsayılanı: 1 desi.
+	defaultDesi := "1"
 	for i, p := range pieces {
-		parcels[i] = PieceDetail{BarcodeNumber: p.BarcodeNumber}
+		parcels[i] = PieceDetail{
+			BarcodeNumber:    p.BarcodeNumber,
+			Weight:           "0.5",
+			VolumetricWeight: defaultDesi,
+		}
 		if totalWeight > 0 {
 			parcels[i].Weight = fmt.Sprintf("%.2f", totalWeight/float64(parcelCount))
 		}
