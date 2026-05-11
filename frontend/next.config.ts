@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
       { hostname: "*.myikas.com" },
       { hostname: "localhost", port: "8080", pathname: "/uploads/**" },
       { hostname: "localhost" },
+      { protocol: "https", hostname: "istanbulvitamin.com", pathname: "/uploads/**" },
+      { protocol: "https", hostname: "www.istanbulvitamin.com", pathname: "/uploads/**" },
+      { protocol: "https", hostname: "api.istanbulvitamin.com", pathname: "/uploads/**" },
     ],
   },
 };
