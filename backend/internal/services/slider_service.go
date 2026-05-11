@@ -63,6 +63,9 @@ func (s *SliderService) Update(slider *models.Slider) error {
 		return errors.New("slider getirilirken bir hata oluştu")
 	}
 
+	// Save tum kolonlari yazar; CreatedAt zero-value gitmesin diye mevcut degeri koruyoruz.
+	slider.CreatedAt = existing.CreatedAt
+
 	if err := s.db.Save(slider).Error; err != nil {
 		return errors.New("slider güncellenirken bir hata oluştu")
 	}

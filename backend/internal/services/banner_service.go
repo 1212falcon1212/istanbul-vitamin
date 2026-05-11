@@ -81,6 +81,9 @@ func (s *BannerService) Update(banner *models.Banner) error {
 		return errors.New("banner getirilirken bir hata oluştu")
 	}
 
+	// Save tum kolonlari yazar; CreatedAt zero-value gitmesin diye mevcut degeri koruyoruz.
+	banner.CreatedAt = existing.CreatedAt
+
 	if err := s.db.Save(banner).Error; err != nil {
 		return errors.New("banner güncellenirken bir hata oluştu")
 	}
