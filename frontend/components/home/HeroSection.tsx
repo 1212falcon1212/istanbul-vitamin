@@ -112,7 +112,7 @@ function HeroSlider({ items }: { items: Item[] }) {
   if (!current) return null;
 
   return (
-    <div className="relative w-full max-w-full rounded-2xl overflow-hidden bg-white aspect-[16/8] sm:aspect-[16/6] md:aspect-[16/5] lg:aspect-[16/4]">
+    <div className="relative w-full max-w-full rounded-2xl overflow-hidden bg-white aspect-[16/9]">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
