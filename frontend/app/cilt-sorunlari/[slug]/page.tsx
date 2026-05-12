@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     concern.meta_title || `${concern.name} için Ürünler — Dermokozmetik Çözümler`;
   const description =
     concern.meta_description ||
-    `${concern.name} cilt sorununa özel dermatoloji onaylı dermokozmetik ürünler. Eczane güvencesiyle İstanbul Vitamin'de.`;
+    `${concern.name} cilt sorununa özel dermatoloji onaylı dermokozmetik ürünler İstanbul Vitamin'de.`;
 
   return {
     title,
@@ -73,8 +73,8 @@ export default async function ConcernPage({ params }: Props) {
             <p className="text-text-secondary mt-3 max-w-3xl leading-relaxed">
               {concern.description ||
                 `${concern.name} sorunlu ciltler için dermatoloji uzmanlarının önerdiği,
-                klinik olarak test edilmiş bakım ürünleri. Hassas formülasyonlar,
-                kanıtlanmış aktifler ve eczane güvencesi.`}
+                klinik olarak test edilmiş bakım ürünleri. Hassas formülasyonlar
+                ve kanıtlanmış aktifler.`}
             </p>
             {concern.count !== undefined && concern.count > 0 && (
               <p className="mt-4 text-xs uppercase tracking-widest text-primary font-semibold">

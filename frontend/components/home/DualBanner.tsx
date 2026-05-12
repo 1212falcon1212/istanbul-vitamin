@@ -24,7 +24,7 @@ export default function DualBanner({ banners }: DualBannerProps) {
         <Link
           href={href}
           aria-label={alt}
-          className="block relative w-full max-w-full overflow-hidden rounded-2xl aspect-[16/9] sm:aspect-[16/6] md:aspect-[24/7] bg-white group"
+          className="block relative w-full max-w-full overflow-hidden rounded-2xl aspect-[1318/358] bg-white group"
         >
           <img
             src={src}

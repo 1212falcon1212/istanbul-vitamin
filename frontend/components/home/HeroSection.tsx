@@ -81,7 +81,7 @@ export default function HeroSection({ banners }: HeroSectionProps) {
             <Link
               href={item.href}
               aria-label={item.alt}
-              className="relative block w-full overflow-hidden rounded-2xl bg-white group aspect-[16/8] sm:aspect-[16/6] lg:aspect-[16/5]"
+              className="relative block w-full overflow-hidden rounded-2xl bg-white group aspect-[1318/358]"
             >
               <Image
                 src={item.image}
@@ -112,7 +112,7 @@ function HeroSlider({ items }: { items: Item[] }) {
   if (!current) return null;
 
   return (
-    <div className="relative w-full max-w-full rounded-2xl overflow-hidden bg-white aspect-[16/9]">
+    <div className="relative w-full max-w-full rounded-2xl overflow-hidden bg-white aspect-[1318/358]">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}

@@ -14,6 +14,9 @@ const deploymentId =
 const nextConfig: NextConfig = {
   deploymentId,
   images: {
+    // Next 16 SSRF korumasi: dev'de local backend'den (localhost:8080)
+    // gelen gorsellerin optimize edilebilmesi icin sadece dev'de aciyoruz.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { hostname: "placehold.co" },
       { hostname: "cdn.myikas.com" },

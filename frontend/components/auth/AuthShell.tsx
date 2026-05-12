@@ -125,7 +125,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
               </span>
 
               <h2 className="mt-6 font-display text-[30px] xl:text-[40px] leading-[1.1] tracking-tight max-w-[400px]">
-                Eczane güvencesiyle
+                Tedarikçi güvencesiyle
                 <br />
                 <span className="relative inline-block">
                   dermokozmetik.
@@ -134,9 +134,8 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
               </h2>
 
               <p className="mt-5 text-[13px] xl:text-sm text-white/75 leading-relaxed max-w-[360px]">
-                5.200+ orijinal ürün, dermatoloji onaylı markalar ve eczane
-                rahatlığı tek bir yerde. Aynı gün kargo, kolay iade, güvenli
-                ödeme.
+                5.200+ orijinal ürün, dermatoloji onaylı markalar tek bir
+                yerde. Aynı gün kargo, kolay iade, güvenli ödeme.
               </p>
             </div>
 
