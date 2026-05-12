@@ -10,14 +10,15 @@ package aras
 
 // Config Aras Kargo entegrasyonu için runtime ayarlar (settings tablosundan gelir).
 type Config struct {
-	Enabled         bool
-	TestMode        bool
-	UserName        string
-	Password        string
-	CustomerCode    string
-	SenderAddressID string
-	PayorTypeCode   string  // "1"=gönderen öder, "2"=alıcı öder
-	ParcelKgLimit   float64 // bir parça için maks. ağırlık (varsayılan 30kg)
+	Enabled           bool
+	TestMode          bool
+	UserName          string
+	Password          string
+	CustomerCode      string
+	SenderAddressID   string
+	PayorTypeCode     string  // "1"=gönderen öder, "2"=alıcı öder
+	ParcelKgLimit     float64 // bir parça için maks. ağırlık (varsayılan 30kg)
+	IntegrationPrefix string  // aynı Aras hesabı altında birden fazla site varsa çakışmaları önler (örn "IV-")
 }
 
 // SOAP endpoint'leri — TestMode bayrağına göre seçilir.

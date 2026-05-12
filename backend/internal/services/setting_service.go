@@ -166,14 +166,15 @@ func (s *SettingService) ArasConfig() (aras.Config, error) {
 		return aras.Config{}, err
 	}
 	cfg := aras.Config{
-		Enabled:         strings.EqualFold(strings.TrimSpace(all["aras.enabled"]), "true"),
-		TestMode:        strings.EqualFold(strings.TrimSpace(all["aras.test_mode"]), "true"),
-		UserName:        strings.TrimSpace(all["aras.username"]),
-		Password:        strings.TrimSpace(all["aras.password"]),
-		CustomerCode:    strings.TrimSpace(all["aras.customer_code"]),
-		SenderAddressID: strings.TrimSpace(all["aras.sender_address_id"]),
-		PayorTypeCode:   strings.TrimSpace(all["aras.payor_type_code"]),
-		ParcelKgLimit:   30,
+		Enabled:           strings.EqualFold(strings.TrimSpace(all["aras.enabled"]), "true"),
+		TestMode:          strings.EqualFold(strings.TrimSpace(all["aras.test_mode"]), "true"),
+		UserName:          strings.TrimSpace(all["aras.username"]),
+		Password:          strings.TrimSpace(all["aras.password"]),
+		CustomerCode:      strings.TrimSpace(all["aras.customer_code"]),
+		SenderAddressID:   strings.TrimSpace(all["aras.sender_address_id"]),
+		PayorTypeCode:     strings.TrimSpace(all["aras.payor_type_code"]),
+		IntegrationPrefix: strings.TrimSpace(all["aras.integration_prefix"]),
+		ParcelKgLimit:     30,
 	}
 	if v := strings.TrimSpace(all["aras.parcel_kg_limit"]); v != "" {
 		if parsed, perr := strconv.ParseFloat(v, 64); perr == nil && parsed > 0 {
