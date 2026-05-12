@@ -11,9 +11,10 @@ import type { Setting } from "@/types";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
-async function uploadSettingsImage(file: File): Promise<string> {
+async function uploadSettingsImage(file: File, purpose?: string): Promise<string> {
   const fd = new FormData();
   fd.append("file", file);
+  if (purpose) fd.append("purpose", purpose);
   const token = localStorage.getItem("admin_token") ?? "";
   const res = await fetch(`${API_BASE_URL}/admin/uploads/image`, {
     method: "POST",
@@ -34,6 +35,8 @@ interface SettingField {
   readOnly?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
+  /** Backend'e iletilen upload "purpose" — örn. "favicon" ise 64×64'e resize edilir. */
+  uploadPurpose?: string;
 }
 
 interface SettingTabAction {
@@ -64,7 +67,7 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     fields: [
       { key: "site_logo_url", label: "Logo (Açık Arkaplan)", type: "image", hint: "Header ve koyu arkaplanlar dışında kullanılır. PNG/SVG önerilir, max 10 MB." },
       { key: "site_logo_url_dark", label: "Logo (Koyu Arkaplan)", type: "image", hint: "Footer gibi koyu bölgeler için beyaz logo (opsiyonel — boşsa Açık logo kullanılır)." },
-      { key: "site_favicon_url", label: "Favicon", type: "image", hint: "Tarayıcı sekmesinde görünen ikon. 32×32 veya 64×64 px PNG/ICO/SVG önerilir." },
+      { key: "site_favicon_url", label: "Favicon", type: "image", uploadPurpose: "favicon", hint: "Tarayıcı sekmesinde görünen ikon. Her boyutta yükleyebilirsiniz; otomatik olarak 64×64 PNG'ye küçültülür." },
     ],
   },
   {
@@ -286,6 +289,7 @@ export default function SettingsPage() {
                 ) : field.type === "image" ? (
                   <ImageSettingField
                     value={values[field.key] ?? ""}
+                    purpose={field.uploadPurpose}
                     onChange={(v) =>
                       setValues((prev) => ({ ...prev, [field.key]: v }))
                     }
@@ -437,9 +441,11 @@ function TabAction({
 function ImageSettingField({
   value,
   onChange,
+  purpose,
 }: {
   value: string;
   onChange: (v: string) => void;
+  purpose?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -448,7 +454,7 @@ function ImageSettingField({
     setUploading(true);
     setUploadError("");
     try {
-      const url = await uploadSettingsImage(file);
+      const url = await uploadSettingsImage(file, purpose);
       if (url) onChange(url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Yüklenemedi");

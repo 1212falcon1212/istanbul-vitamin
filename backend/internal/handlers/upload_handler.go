@@ -4,6 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +17,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/istanbulvitamin/backend/internal/config"
 	"github.com/istanbulvitamin/backend/internal/utils"
+	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
 type UploadHandler struct {
@@ -34,6 +41,9 @@ var allowedImageExt = map[string]struct{}{
 
 // maxUploadBytes yüklenebilir dosya boyutu limiti (10 MB).
 const maxUploadBytes = 10 * 1024 * 1024
+
+// faviconSize tarayıcı sekmesinde göstermek için yeterli boyut (Retina için 64×64).
+const faviconSize = 64
 
 // UploadImage multipart/form-data ile gelen "file" alanını diske yazar,
 // sonra public URL'i döndürür. Admin paneli tarafından kullanılır.
@@ -67,11 +77,33 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 	if _, err := rand.Read(random); err != nil {
 		return utils.InternalError(c)
 	}
-	filename := fmt.Sprintf("%d-%s%s", now.UnixNano(), hex.EncodeToString(random), ext)
+
+	// Favicon yüklemesinde raster görselleri 64×64 PNG'ye küçültüyoruz; SVG ve
+	// ICO olduğu gibi kalır çünkü vektör/ICO'yu raster pipeline'a sokmak yanlış olur.
+	purpose := strings.ToLower(c.FormValue("purpose"))
+	isFavicon := purpose == "favicon"
+	saveExt := ext
+	if isFavicon && ext != ".svg" && ext != ".ico" {
+		saveExt = ".png"
+	}
+
+	filename := fmt.Sprintf("%d-%s%s", now.UnixNano(), hex.EncodeToString(random), saveExt)
 	fullPath := filepath.Join(targetDir, filename)
 
-	if err := c.SaveFile(file, fullPath); err != nil {
-		return utils.InternalError(c)
+	if isFavicon && saveExt == ".png" {
+		if err := saveResizedFavicon(file, fullPath); err != nil {
+			return utils.BadRequest(c, "Favicon işlenemedi: "+err.Error())
+		}
+	} else {
+		if err := c.SaveFile(file, fullPath); err != nil {
+			return utils.InternalError(c)
+		}
+	}
+
+	// Diskteki gerçek dosya boyutu (favicon ise resize sonrası çok daha küçük).
+	var savedSize int64 = file.Size
+	if info, err := os.Stat(fullPath); err == nil {
+		savedSize = info.Size()
 	}
 
 	// Tam URL döndür — frontend farklı origin'de (:3000), göreli path 404 olur.
@@ -83,6 +115,46 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 		"url":      publicURL,
 		"path":     relativePath,
 		"filename": filename,
-		"size":     file.Size,
+		"size":     savedSize,
 	})
+}
+
+// saveResizedFavicon yüklenen raster görseli faviconSize×faviconSize PNG olarak
+// dst yoluna yazar. JPEG/PNG/GIF/WebP kaynaklarını destekler (decoder registry'ye
+// import yoluyla register edildi); en-boy oranını korur, kalan alanı şeffaf bırakır.
+func saveResizedFavicon(fileHeader *multipart.FileHeader, dst string) error {
+	src, err := fileHeader.Open()
+	if err != nil {
+		return fmt.Errorf("dosya açılamadı: %w", err)
+	}
+	defer src.Close()
+
+	img, _, err := image.Decode(src)
+	if err != nil {
+		return fmt.Errorf("görsel çözülemedi: %w", err)
+	}
+
+	srcBounds := img.Bounds()
+	srcW, srcH := srcBounds.Dx(), srcBounds.Dy()
+
+	// En-boy oranını koruyarak faviconSize karesine ortala.
+	scale := float64(faviconSize) / float64(srcW)
+	if h := float64(faviconSize) / float64(srcH); h < scale {
+		scale = h
+	}
+	dstW := int(float64(srcW) * scale)
+	dstH := int(float64(srcH) * scale)
+	offX := (faviconSize - dstW) / 2
+	offY := (faviconSize - dstH) / 2
+
+	canvas := image.NewNRGBA(image.Rect(0, 0, faviconSize, faviconSize))
+	draw.CatmullRom.Scale(canvas, image.Rect(offX, offY, offX+dstW, offY+dstH), img, srcBounds, draw.Over, nil)
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("yazılamadı: %w", err)
+	}
+	defer out.Close()
+	enc := png.Encoder{CompressionLevel: png.BestCompression}
+	return enc.Encode(out, canvas)
 }
