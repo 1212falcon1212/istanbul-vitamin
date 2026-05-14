@@ -806,15 +806,18 @@ export default function OdemePage() {
                     item.variant?.price ?? item.product?.price ?? 0;
                   return (
                     <div key={item.id} className="flex items-start gap-4">
-                      {/* Larger product image */}
-                      <div className="relative w-20 h-20 rounded-xl bg-white border border-border shrink-0 overflow-hidden shadow-sm">
-                        <Image
-                          src={img}
-                          alt={item.product?.name ?? ""}
-                          fill
-                          sizes="80px"
-                          className="object-contain p-2"
-                        />
+                      {/* Larger product image — badge dış wrapper'da, görsel iç div'de
+                          ki overflow-hidden image'ı clip'lerken badge'i kırpmasın. */}
+                      <div className="relative shrink-0">
+                        <div className="relative w-20 h-20 rounded-xl bg-white border border-border overflow-hidden shadow-sm">
+                          <Image
+                            src={img}
+                            alt={item.product?.name ?? ""}
+                            fill
+                            sizes="80px"
+                            className="object-contain p-2"
+                          />
+                        </div>
                         <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-text-primary text-white text-[10px] font-bold flex items-center justify-center shadow">
                           {item.quantity}
                         </span>
