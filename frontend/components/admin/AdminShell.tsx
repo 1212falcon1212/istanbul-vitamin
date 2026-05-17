@@ -203,6 +203,12 @@ export default function AdminShell({ title, children }: AdminShellProps) {
           </div>
 
           <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium text-text-secondary transition-colors hover:border-primary hover:text-primary"
+            >
+              Siteye Dön
+            </Link>
             <span className="text-sm text-text-secondary hidden sm:block">{adminName}</span>
             <button
               onClick={handleLogout}

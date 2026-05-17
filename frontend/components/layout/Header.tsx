@@ -179,8 +179,14 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
     ? resolveImageUrl(settings.site_logo_url)
     : "";
   const siteName = settings.site_name || "İstanbul Vitamin";
+  const phone = settings.phone?.trim() || "";
+  const phoneHref = `tel:${phone.replace(/[^+\d]/g, "")}`;
+  const email = settings.email?.trim() || "";
+  const announcementText = settings.top_header_text?.trim();
+  const announcementHref = settings.top_header_link?.trim();
 
   // --- State ---
+  const [mounted, setMounted] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -192,6 +198,17 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
   const megaTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const topHeaderEnabled = settings.top_header_enabled === "true";
+  const showTopHeader =
+    mounted &&
+    !settingsLoading &&
+    topHeaderEnabled &&
+    (!!announcementText || !!phone || !!email);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // --- Data fetch ---
   useEffect(() => {
@@ -262,28 +279,50 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
   return (
     <header className="w-full z-50 relative">
       {/* ======================== Top Bar ======================== */}
-      <div className="hidden md:block bg-primary-dark text-white">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-1.5 text-xs tracking-wide">
+      <div
+        className="hidden md:block bg-primary-dark text-white"
+        style={{ display: showTopHeader ? undefined : "none" }}
+        suppressHydrationWarning
+      >
+        <div
+          className="max-w-7xl mx-auto px-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-1.5 text-xs tracking-wide"
+          suppressHydrationWarning
+        >
           {/* Left: contact info */}
           <div className="flex items-center gap-5">
-            <a
-              href="tel:+902121234567"
-              className="flex items-center gap-1.5 hover:text-primary-soft transition-colors"
-            >
-              <PhoneIcon className="w-3.5 h-3.5" />
-              <span>0212 123 45 67</span>
-            </a>
-            <a
-              href="mailto:info@istanbulvitamin.com"
-              className="flex items-center gap-1.5 hover:text-primary-soft transition-colors"
-            >
-              <EnvelopeIcon className="w-3.5 h-3.5" />
-              <span>info@istanbulvitamin.com</span>
-            </a>
+            {showTopHeader && phone && (
+              <a
+                href={phoneHref}
+                className="flex items-center gap-1.5 hover:text-primary-soft transition-colors"
+              >
+                <PhoneIcon className="w-3.5 h-3.5" />
+                <span>{phone}</span>
+              </a>
+            )}
+            {showTopHeader && email && (
+              <a
+                href={`mailto:${email}`}
+                className="flex items-center gap-1.5 hover:text-primary-soft transition-colors"
+              >
+                <EnvelopeIcon className="w-3.5 h-3.5" />
+                <span>{email}</span>
+              </a>
+            )}
+          </div>
+
+          <div className="min-w-0 max-w-md truncate text-center font-medium">
+            {showTopHeader && announcementText &&
+              (announcementHref ? (
+                <Link href={announcementHref} className="hover:text-primary-soft transition-colors">
+                  {announcementText}
+                </Link>
+              ) : (
+                announcementText
+              ))}
           </div>
 
           {/* Right: utility links */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center justify-end gap-5">
             <Link
               href="/hesabim/siparisler"
               className="hover:text-primary-soft transition-colors"

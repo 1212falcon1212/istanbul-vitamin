@@ -59,6 +59,9 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     fields: [
       { key: "site_name", label: "Site Adı", type: "text" },
       { key: "site_description", label: "Site Açıklaması", type: "textarea", hint: "Footer'da ve meta bilgilerinde kullanılır." },
+      { key: "top_header_enabled", label: "Üst Duyuru Aktif", type: "checkbox" },
+      { key: "top_header_text", label: "Üst Duyuru Metni", type: "text", hint: "Sitenin en üstündeki duyuru alanında gösterilir." },
+      { key: "top_header_link", label: "Üst Duyuru Linki", type: "url", hint: "Opsiyonel. Boşsa duyuru tıklanamaz." },
     ],
   },
   {
