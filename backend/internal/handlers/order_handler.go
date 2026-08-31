@@ -129,6 +129,11 @@ func (h *OrderHandler) Create(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Sepet ID zorunludur")
 	}
 
+	cartService := services.NewCartService(database.DB)
+	if _, err := cartService.GetCartWithDetailsForUser(req.CartID, userID); err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+
 	req.ShippingFirstName = strings.TrimSpace(req.ShippingFirstName)
 	req.ShippingLastName = strings.TrimSpace(req.ShippingLastName)
 	req.ShippingPhone = strings.TrimSpace(req.ShippingPhone)
@@ -199,8 +204,7 @@ func (h *OrderHandler) Create(c *fiber.Ctx) error {
 	// Kupon dogrulama
 	if req.CouponCode != "" {
 		// Sepetten siparis tutarini hesapla (service icerisinde de yapilacak ama kupon dogrulamasi icin burada da lazim)
-		cartService := services.NewCartService(database.DB)
-		cart, err := cartService.GetCartWithDetails(req.CartID)
+		cart, err := cartService.GetCartWithDetailsForUser(req.CartID, userID)
 		if err != nil {
 			return utils.BadRequest(c, err.Error())
 		}

@@ -35,6 +35,11 @@ type startPaymentRequest struct {
 
 // StartPayment odeme islemini baslatir.
 func (h *PaymentHandler) StartPayment(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(uint64)
+	if !ok {
+		return utils.Unauthorized(c)
+	}
+
 	var req startPaymentRequest
 	if err := c.BodyParser(&req); err != nil {
 		return utils.BadRequest(c, "Geçersiz istek formatı")
@@ -68,7 +73,7 @@ func (h *PaymentHandler) StartPayment(c *fiber.Ctx) error {
 		CardToken:      req.CardToken,
 	}
 
-	result, err := h.service.StartPayment(req.OrderID, cardData)
+	result, err := h.service.StartPayment(req.OrderID, userID, cardData)
 	if err != nil {
 		return utils.BadRequest(c, err.Error())
 	}

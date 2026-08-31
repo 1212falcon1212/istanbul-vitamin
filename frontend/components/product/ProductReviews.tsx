@@ -36,10 +36,15 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey(productId));
-      if (raw) setReviews(JSON.parse(raw));
-    } catch {}
+    const id = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(storageKey(productId));
+        setReviews(raw ? JSON.parse(raw) : []);
+      } catch {
+        setReviews([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [productId]);
 
   const avg = useMemo(() => {

@@ -205,6 +205,31 @@ func (s *CartService) GetCartWithDetails(cartID uint64) (*models.Cart, error) {
 	return &cart, nil
 }
 
+// GetCartWithDetailsForUser tam sepet bilgisini sadece sepet sahibi kullanıcı için getirir.
+func (s *CartService) GetCartWithDetailsForUser(cartID, userID uint64) (*models.Cart, error) {
+	var cart models.Cart
+
+	err := s.db.
+		Preload("Items", func(db *gorm.DB) *gorm.DB {
+			return db.Order("cart_items.created_at DESC")
+		}).
+		Preload("Items.Product").
+		Preload("Items.Product.Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("product_images.sort_order ASC")
+		}).
+		Preload("Items.Variant").
+		Where("id = ? AND user_id = ?", cartID, userID).
+		First(&cart).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("sepet bulunamadı")
+		}
+		return nil, errors.New("sepet getirilirken bir hata oluştu")
+	}
+
+	return &cart, nil
+}
+
 // ApplyCoupon sepete kupon uygular ve hem kupon bilgisini hem hesaplanan
 // indirim tutarını döndürür. Frontend, sepet ekranında bu indirimi gösterip
 // toplamdan düşüyor.

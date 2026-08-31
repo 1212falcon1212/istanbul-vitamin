@@ -72,7 +72,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    reload();
+    const id = window.setTimeout(() => {
+      reload();
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   return (

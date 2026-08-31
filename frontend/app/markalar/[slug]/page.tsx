@@ -19,16 +19,24 @@ export default function BrandDetailPage({ params }: Props) {
   const [brandLoading, setBrandLoading] = useState(true);
 
   useEffect(() => {
-    setBrandLoading(true);
+    let cancelled = false;
     api
       .get<Brand | { brand: Brand }>(`/brands/${slug}`)
       .then((res) => {
+        if (cancelled) return;
         const raw = res.data as Brand | { brand?: Brand } | undefined;
         const b = raw && "brand" in raw ? raw.brand : (raw as Brand | undefined);
         setBrand(b ?? null);
       })
-      .catch(() => setBrand(null))
-      .finally(() => setBrandLoading(false));
+      .catch(() => {
+        if (!cancelled) setBrand(null);
+      })
+      .finally(() => {
+        if (!cancelled) setBrandLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   if (brandLoading) {

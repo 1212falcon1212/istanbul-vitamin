@@ -21,11 +21,13 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    const role = localStorage.getItem("auth_role");
-    if (!token || !["super_admin", "admin", "editor"].includes(role || "")) {
-      router.push("/yonetim/giris");
-    }
+    let cancelled = false;
+    api.get("/admin/users/me").catch(() => {
+      if (!cancelled) router.push("/yonetim/giris");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {

@@ -24,11 +24,6 @@ function getSessionId(): string {
   return sessionId;
 }
 
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("auth_token");
-}
-
 async function cartRequest<T>(
   endpoint: string,
   method: string = "GET",
@@ -38,11 +33,6 @@ async function cartRequest<T>(
     "Content-Type": "application/json",
     "X-Session-ID": getSessionId(),
   };
-
-  const token = getAuthToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,

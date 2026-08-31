@@ -27,10 +27,11 @@ export default function SimilarProducts({ products }: SimilarProductsProps) {
 
   useEffect(() => {
     if (!emblaApi) return;
-    onSelect();
+    const id = window.setTimeout(onSelect, 0);
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", onSelect);
     return () => {
+      window.clearTimeout(id);
       emblaApi.off("select", onSelect);
       emblaApi.off("reInit", onSelect);
     };

@@ -36,7 +36,6 @@ var allowedImageExt = map[string]struct{}{
 	".png":  {},
 	".webp": {},
 	".gif":  {},
-	".svg":  {},
 }
 
 // maxUploadBytes yüklenebilir dosya boyutu limiti (10 MB).
@@ -59,7 +58,11 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if _, ok := allowedImageExt[ext]; !ok {
-		return utils.BadRequest(c, "Yalnızca görsel dosyaları yüklenebilir (jpg, png, webp, gif, svg)")
+		return utils.BadRequest(c, "Yalnızca raster görsel dosyaları yüklenebilir (jpg, png, webp, gif)")
+	}
+
+	if isImageFileUnsafe(file) {
+		return utils.BadRequest(c, "Dosya içeriği izin verilen görsel formatlarıyla eşleşmiyor")
 	}
 
 	// Tarih bazlı alt klasör (uploads/2026/04/) + rastgele dosya adı
@@ -78,12 +81,11 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
-	// Favicon yüklemesinde raster görselleri 64×64 PNG'ye küçültüyoruz; SVG ve
-	// ICO olduğu gibi kalır çünkü vektör/ICO'yu raster pipeline'a sokmak yanlış olur.
+	// Favicon yüklemesinde raster görselleri 64x64 PNG'ye küçültüyoruz.
 	purpose := strings.ToLower(c.FormValue("purpose"))
 	isFavicon := purpose == "favicon"
 	saveExt := ext
-	if isFavicon && ext != ".svg" && ext != ".ico" {
+	if isFavicon {
 		saveExt = ".png"
 	}
 
@@ -117,6 +119,16 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 		"filename": filename,
 		"size":     savedSize,
 	})
+}
+
+func isImageFileUnsafe(fileHeader *multipart.FileHeader) bool {
+	src, err := fileHeader.Open()
+	if err != nil {
+		return true
+	}
+	defer src.Close()
+	_, _, err = image.DecodeConfig(src)
+	return err != nil
 }
 
 // saveResizedFavicon yüklenen raster görseli faviconSize×faviconSize PNG olarak

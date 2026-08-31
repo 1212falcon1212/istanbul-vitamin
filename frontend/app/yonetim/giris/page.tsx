@@ -23,12 +23,6 @@ export default function AdminLoginPage() {
         password,
       });
       if (res.data) {
-        // Admin oturumu user oturumundan ayrı — farklı localStorage anahtarları.
-        localStorage.setItem("admin_token", res.data.token);
-        localStorage.setItem("admin_role", res.data.admin?.role || "admin");
-        if (res.data.admin?.full_name) {
-          localStorage.setItem("admin_name", res.data.admin.full_name);
-        }
         router.push("/yonetim");
       }
     } catch (err) {

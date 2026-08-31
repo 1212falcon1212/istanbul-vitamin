@@ -13,12 +13,10 @@ const API_BASE_URL =
 async function uploadBannerImage(file: File): Promise<string> {
   const fd = new FormData();
   fd.append("file", file);
-  const token = localStorage.getItem("admin_token") ?? "";
   const res = await fetch(`${API_BASE_URL}/admin/uploads/image`, {
     method: "POST",
     body: fd,
     credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "Yükleme başarısız");

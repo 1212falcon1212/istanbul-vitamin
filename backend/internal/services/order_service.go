@@ -31,14 +31,19 @@ func (s *OrderService) Create(order *models.Order, cartID uint64) error {
 		// Sepeti getir — primary image yoksa snapshot boş kalmasın diye sort_order'a
 		// göre ilk kaydı alıyoruz; primary varsa zaten sort_order=0 olur.
 		var cart models.Cart
-		err := tx.
+		query := tx.
 			Preload("Items").
 			Preload("Items.Product").
 			Preload("Items.Product.Images", func(db *gorm.DB) *gorm.DB {
 				return db.Order("is_primary DESC, sort_order ASC, id ASC").Limit(1)
 			}).
-			Preload("Items.Variant").
-			First(&cart, cartID).Error
+			Preload("Items.Variant")
+		if order.UserID != nil {
+			query = query.Where("id = ? AND user_id = ?", cartID, *order.UserID)
+		} else {
+			query = query.Where("id = ? AND user_id IS NULL", cartID)
+		}
+		err := query.First(&cart).Error
 		if err != nil {
 			return errors.New("sepet bulunamadı")
 		}
@@ -278,8 +283,9 @@ func (s *OrderService) List(userID uint64, page, perPage int) ([]models.Order, i
 
 // AdminList tum siparisleri sayfalanmis ve filtrelenmis olarak dondurur.
 // invoiced nil değilse Bizimhesap fatura durumuna göre filtreler:
-//   true  -> bizim_hesap_invoice_id dolu
-//   false -> bizim_hesap_invoice_id boş
+//
+//	true  -> bizim_hesap_invoice_id dolu
+//	false -> bizim_hesap_invoice_id boş
 func (s *OrderService) AdminList(page, perPage int, status, source string, invoiced *bool) ([]models.Order, int64, error) {
 	var orders []models.Order
 	var total int64

@@ -47,7 +47,6 @@ export default function ImageManager({
     setUploadError("");
     setUploading(true);
     try {
-      const token = localStorage.getItem("admin_token") ?? "";
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append("file", file);
@@ -55,7 +54,6 @@ export default function ImageManager({
           method: "POST",
           body: fd,
           credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         const json = await res.json();
         if (!res.ok) {

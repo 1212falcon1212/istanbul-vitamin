@@ -104,7 +104,7 @@ export default function PaymentForm({
       {/* Dev mode notice — prod'da gizlenir */}
       {process.env.NEXT_PUBLIC_PAYMENT_DEV_MODE === "true" && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-          <strong>Geliştirme modu:</strong> Kart bilgisi girmeden "Siparişi Tamamla"ya basabilirsin. Gerçek tahsilat yapılmaz.
+          <strong>Geliştirme modu:</strong> Kart bilgisi girmeden &quot;Siparişi Tamamla&quot;ya basabilirsin. Gerçek tahsilat yapılmaz.
         </div>
       )}
 

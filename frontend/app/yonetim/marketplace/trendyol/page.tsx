@@ -80,7 +80,7 @@ export default function TrendyolPage() {
         href="/yonetim/marketplace"
         className="text-sm text-primary hover:underline mb-4 inline-block"
       >
-        &larr; Marketplace'e Don
+        &larr; Marketplace&apos;e Don
       </Link>
 
       {/* Connection Settings */}

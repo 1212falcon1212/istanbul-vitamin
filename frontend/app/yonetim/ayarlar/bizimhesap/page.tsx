@@ -243,8 +243,8 @@ export default function BizimhesapSettingsPage() {
 
         <div className="bg-bg-primary rounded-xl p-4 text-xs text-text-secondary space-y-1">
           <p className="font-medium text-text-primary">Nasıl çalışır?</p>
-          <p>• Entegrasyon açık ve firmId tanımlıyken, sipariş kargolandığında Bizimhesap'a satış faturası otomatik oluşturulur.</p>
-          <p>• Fatura URL'si müşteriye ve admin paneline kaydedilir.</p>
+          <p>• Entegrasyon açık ve firmId tanımlıyken, sipariş kargolandığında Bizimhesap&apos;a satış faturası otomatik oluşturulur.</p>
+          <p>• Fatura URL&apos;si müşteriye ve admin paneline kaydedilir.</p>
           <p>• Hatalı faturalar için retry kuyruğu saatlik yeniden dener; admin panelinden manuel tetik de mümkündür.</p>
         </div>
       </div>

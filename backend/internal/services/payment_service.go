@@ -58,9 +58,9 @@ func NewPaymentService(db *gorm.DB, cfg *config.Config) *PaymentService {
 }
 
 // StartPayment PayTR odeme istegi olusturur ve 3D Secure yonlendirme URL'i dondurur.
-func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) (*PaymentResult, error) {
+func (s *PaymentService) StartPayment(orderID, userID uint64, cardData CardPaymentData) (*PaymentResult, error) {
 	var order models.Order
-	if err := s.db.Preload("Items").First(&order, orderID).Error; err != nil {
+	if err := s.db.Preload("Items").Where("id = ? AND user_id = ?", orderID, userID).First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("sipariş bulunamadı")
 		}
@@ -154,27 +154,27 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 	// PayTR API cagrisi
 	resp, err := s.client.R().
 		SetFormData(map[string]string{
-			"merchant_id":    merchantID,
-			"user_ip":        userIP,
-			"merchant_oid":   merchantOID,
-			"email":          email,
-			"payment_amount": paymentAmount,
-			"paytr_token":    paytrToken,
-			"user_basket":    userBasket,
-			"debug_on":       testMode,
-			"no_installment": noInstallment,
-			"max_installment": maxInstallment,
-			"user_name":      cardData.CardHolderName,
-			"user_phone":     order.ShippingPhone,
-			"merchant_ok_url": s.cfg.FrontendURL + "/odeme/basarili",
+			"merchant_id":       merchantID,
+			"user_ip":           userIP,
+			"merchant_oid":      merchantOID,
+			"email":             email,
+			"payment_amount":    paymentAmount,
+			"paytr_token":       paytrToken,
+			"user_basket":       userBasket,
+			"debug_on":          testMode,
+			"no_installment":    noInstallment,
+			"max_installment":   maxInstallment,
+			"user_name":         cardData.CardHolderName,
+			"user_phone":        order.ShippingPhone,
+			"merchant_ok_url":   s.cfg.FrontendURL + "/odeme/basarili",
 			"merchant_fail_url": s.cfg.FrontendURL + "/odeme/basarisiz",
-			"currency":       currency,
-			"test_mode":      testMode,
-			"cc_owner":       cardData.CardHolderName,
-			"card_number":    cardData.CardNumber,
-			"expiry_month":   cardData.ExpMonth,
-			"expiry_year":    cardData.ExpYear,
-			"cvv":            cardData.CVV,
+			"currency":          currency,
+			"test_mode":         testMode,
+			"cc_owner":          cardData.CardHolderName,
+			"card_number":       cardData.CardNumber,
+			"expiry_month":      cardData.ExpMonth,
+			"expiry_year":       cardData.ExpYear,
+			"cvv":               cardData.CVV,
 			"installment_count": fmt.Sprintf("%d", installment),
 		}).
 		SetResult(map[string]interface{}{}).

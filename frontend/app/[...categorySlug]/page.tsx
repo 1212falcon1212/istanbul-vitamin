@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Category, Page } from "@/types";
 import { fetchAPI } from "@/lib/fetch-api";
@@ -215,12 +216,12 @@ function CmsPageView({ page }: { page: Page }) {
                   <p className="font-display text-lg leading-snug mb-3">
                     Müşteri hizmetlerimiz her zaman yanında.
                   </p>
-                  <a
+                  <Link
                     href="/musteri-hizmetleri"
                     className="inline-flex items-center gap-1.5 h-9 px-4 bg-white text-primary rounded-lg text-sm font-medium hover:bg-white/90 transition-colors"
                   >
                     İletişime Geç →
-                  </a>
+                  </Link>
                 </div>
               </aside>
             )}

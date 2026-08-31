@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import SectionLabel from "@/components/ui/SectionLabel";
 import SerifHeading from "@/components/ui/SerifHeading";
@@ -65,12 +66,12 @@ export default function NewsletterCTA() {
                 className="w-full bg-transparent border-0 border-b border-[#b8a4f0] pb-3 text-white placeholder-white/40 text-sm focus:outline-none focus:border-white transition-colors font-body"
               />
               <div className="mt-6 flex justify-between items-center">
-                <a
+                <Link
                   href="/gizlilik-politikasi"
                   className="text-white/40 text-[10px] hover:text-white/70 transition-colors font-body"
                 >
                   Gizlilik politikamızı
-                </a>
+                </Link>
                 <PillButton
                   variant="white"
                   type="submit"

@@ -11,31 +11,16 @@ type RequestOptions = {
   next?: NextFetchRequestConfig;
 };
 
-function getAuthToken(endpoint: string): string | null {
-  if (typeof window === "undefined") return null;
-  // Admin endpoint'leri admin token'ını kullanır, diğerleri user token'ını —
-  // iki oturum aynı tarayıcıda eş zamanlı açık olabilir.
-  if (endpoint.startsWith("/admin")) {
-    return localStorage.getItem("admin_token");
-  }
-  return localStorage.getItem("auth_token");
-}
-
 async function request<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
   const { method = "GET", body, headers = {}, cache, next } = options;
 
-  const token = getAuthToken(endpoint);
   const requestHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
-
-  if (token) {
-    requestHeaders["Authorization"] = `Bearer ${token}`;
-  }
 
   const url = endpoint.startsWith("http")
     ? endpoint
@@ -45,7 +30,7 @@ async function request<T>(
     method,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: "include", // HttpOnly auth_token cookie'yi gönder
+    credentials: "include", // HttpOnly auth/admin cookie'lerini gönder
     cache,
     next,
   });

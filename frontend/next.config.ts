@@ -13,6 +13,14 @@ const deploymentId =
 
 const nextConfig: NextConfig = {
   deploymentId,
+  async rewrites() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/icon",
+      },
+    ];
+  },
   images: {
     // Next 16 SSRF korumasi: dev'de local backend'den (localhost:8080)
     // gelen gorsellerin optimize edilebilmesi icin sadece dev'de aciyoruz.

@@ -15,12 +15,10 @@ async function uploadSettingsImage(file: File, purpose?: string): Promise<string
   const fd = new FormData();
   fd.append("file", file);
   if (purpose) fd.append("purpose", purpose);
-  const token = localStorage.getItem("admin_token") ?? "";
   const res = await fetch(`${API_BASE_URL}/admin/uploads/image`, {
     method: "POST",
     body: fd,
     credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "Yükleme başarısız");

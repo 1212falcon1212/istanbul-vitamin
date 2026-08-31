@@ -72,14 +72,29 @@ export default function AdminShell({ title, children }: AdminShellProps) {
   const [adminName, setAdminName] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    const role = localStorage.getItem("admin_role");
-    if (!token || !["super_admin", "admin", "editor"].includes(role || "")) {
-      router.push("/yonetim/giris");
-      return;
-    }
-    setIsAuthed(true);
-    setAdminName(localStorage.getItem("admin_name") || "Admin");
+    let cancelled = false;
+
+    fetch(
+      (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1") +
+        "/admin/users/me",
+      { credentials: "include" }
+    )
+      .then(async (res) => {
+        if (!res.ok) throw new Error("unauthorized");
+        return (await res.json()) as { data?: { user?: { full_name?: string } } };
+      })
+      .then((json) => {
+        if (cancelled) return;
+        setAdminName(json.data?.user?.full_name || "Admin");
+        setIsAuthed(true);
+      })
+      .catch(() => {
+        if (!cancelled) router.push("/yonetim/giris");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function handleLogout() {
@@ -91,17 +106,11 @@ export default function AdminShell({ title, children }: AdminShellProps) {
         {
           method: "POST",
           credentials: "include",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("admin_token") ?? ""}`,
-          },
         }
       );
     } catch {
       // ignore
     }
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_role");
-    localStorage.removeItem("admin_name");
     router.push("/yonetim/giris");
   }
 
@@ -241,10 +250,8 @@ function NavGroup({
   groupActive: boolean;
   onLeafClick: () => void;
 }) {
-  const [open, setOpen] = useState(groupActive);
-  useEffect(() => {
-    if (groupActive) setOpen(true);
-  }, [groupActive]);
+  const [manuallyOpen, setManuallyOpen] = useState(false);
+  const open = groupActive || manuallyOpen;
 
   const Icon = entry.icon;
 
@@ -252,7 +259,7 @@ function NavGroup({
     <div>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setManuallyOpen((v) => !v)}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
           groupActive

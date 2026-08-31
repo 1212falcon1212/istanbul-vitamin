@@ -30,12 +30,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-    if (!token) {
-      setIds(new Set());
-      return;
-    }
     setIsLoading(true);
     try {
       const res = await api.get<Favorite[] | { favorites: Favorite[] }>(
@@ -70,10 +64,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback(
     async (productId: number) => {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("Favori eklemek için giriş yapmalısın");
-      }
       const has = ids.has(productId);
       // Optimistic
       setIds((prev) => {
