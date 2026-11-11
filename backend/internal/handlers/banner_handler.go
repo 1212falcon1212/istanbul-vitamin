@@ -22,15 +22,23 @@ func NewBannerHandler() *BannerHandler {
 }
 
 type createBannerRequest struct {
-	Position       string  `json:"position"`
-	Title          string  `json:"title"`
-	ImageURL       string  `json:"image_url"`
-	ImageURLMobile string  `json:"image_url_mobile"`
-	LinkURL        string  `json:"link_url"`
-	SortOrder      int     `json:"sort_order"`
-	IsActive       *bool   `json:"is_active"`
-	StartsAt       *string `json:"starts_at"`
-	ExpiresAt      *string `json:"expires_at"`
+	Position            string  `json:"position"`
+	Title               string  `json:"title"`
+	ImageURL            string  `json:"image_url"`
+	ImageURLMobile      string  `json:"image_url_mobile"`
+	LinkURL             string  `json:"link_url"`
+	Subtitle            string  `json:"subtitle"`
+	ButtonText          string  `json:"button_text"`
+	SecondaryButtonText string  `json:"secondary_button_text"`
+	SecondaryLinkURL    string  `json:"secondary_link_url"`
+	SecondaryImageURL   string  `json:"secondary_image_url"`
+	SecondaryImageAlt   string  `json:"secondary_image_alt"`
+	BackgroundColor     string  `json:"background_color"`
+	ImageFit            string  `json:"image_fit"`
+	SortOrder           int     `json:"sort_order"`
+	IsActive            *bool   `json:"is_active"`
+	StartsAt            *string `json:"starts_at"`
+	ExpiresAt           *string `json:"expires_at"`
 }
 
 // List aktif banner'lari dondurur (public).
@@ -97,15 +105,23 @@ func (h *BannerHandler) Create(c *fiber.Ctx) error {
 	}
 
 	banner := &models.Banner{
-		Position:       req.Position,
-		Title:          strings.TrimSpace(req.Title),
-		ImageURL:       req.ImageURL,
-		ImageURLMobile: strings.TrimSpace(req.ImageURLMobile),
-		LinkURL:        strings.TrimSpace(req.LinkURL),
-		SortOrder:      req.SortOrder,
-		IsActive:       isActive,
-		StartsAt:       parseOptionalTime(req.StartsAt),
-		ExpiresAt:      parseOptionalTime(req.ExpiresAt),
+		Position:            req.Position,
+		Title:               strings.TrimSpace(req.Title),
+		ImageURL:            req.ImageURL,
+		ImageURLMobile:      strings.TrimSpace(req.ImageURLMobile),
+		LinkURL:             strings.TrimSpace(req.LinkURL),
+		Subtitle:            strings.TrimSpace(req.Subtitle),
+		ButtonText:          strings.TrimSpace(req.ButtonText),
+		SecondaryButtonText: strings.TrimSpace(req.SecondaryButtonText),
+		SecondaryLinkURL:    strings.TrimSpace(req.SecondaryLinkURL),
+		SecondaryImageURL:   strings.TrimSpace(req.SecondaryImageURL),
+		SecondaryImageAlt:   strings.TrimSpace(req.SecondaryImageAlt),
+		BackgroundColor:     strings.TrimSpace(req.BackgroundColor),
+		ImageFit:            strings.TrimSpace(req.ImageFit),
+		SortOrder:           req.SortOrder,
+		IsActive:            isActive,
+		StartsAt:            parseOptionalTime(req.StartsAt),
+		ExpiresAt:           parseOptionalTime(req.ExpiresAt),
 	}
 
 	if err := h.service.Create(banner); err != nil {
@@ -145,16 +161,24 @@ func (h *BannerHandler) Update(c *fiber.Ctx) error {
 	}
 
 	banner := &models.Banner{
-		ID:             id,
-		Position:       req.Position,
-		Title:          strings.TrimSpace(req.Title),
-		ImageURL:       req.ImageURL,
-		ImageURLMobile: strings.TrimSpace(req.ImageURLMobile),
-		LinkURL:        strings.TrimSpace(req.LinkURL),
-		SortOrder:      req.SortOrder,
-		IsActive:       isActive,
-		StartsAt:       parseOptionalTime(req.StartsAt),
-		ExpiresAt:      parseOptionalTime(req.ExpiresAt),
+		ID:                  id,
+		Position:            req.Position,
+		Title:               strings.TrimSpace(req.Title),
+		ImageURL:            req.ImageURL,
+		ImageURLMobile:      strings.TrimSpace(req.ImageURLMobile),
+		LinkURL:             strings.TrimSpace(req.LinkURL),
+		Subtitle:            strings.TrimSpace(req.Subtitle),
+		ButtonText:          strings.TrimSpace(req.ButtonText),
+		SecondaryButtonText: strings.TrimSpace(req.SecondaryButtonText),
+		SecondaryLinkURL:    strings.TrimSpace(req.SecondaryLinkURL),
+		SecondaryImageURL:   strings.TrimSpace(req.SecondaryImageURL),
+		SecondaryImageAlt:   strings.TrimSpace(req.SecondaryImageAlt),
+		BackgroundColor:     strings.TrimSpace(req.BackgroundColor),
+		ImageFit:            strings.TrimSpace(req.ImageFit),
+		SortOrder:           req.SortOrder,
+		IsActive:            isActive,
+		StartsAt:            parseOptionalTime(req.StartsAt),
+		ExpiresAt:           parseOptionalTime(req.ExpiresAt),
 	}
 
 	if err := h.service.Update(banner); err != nil {

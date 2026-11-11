@@ -19,10 +19,10 @@ const sizeClasses: Record<HeadingSize, string> = {
 };
 
 /**
- * Mixed serif heading.
+ * Shared display heading.
  *
- * Wrap a word or phrase in <em> to render it in italic DM Serif Display
- * with the accent (primary) colour:
+ * Legacy component name; uses the shared Inter display font. Wrap text in <em>
+ * while inheriting the heading colour:
  *
  *   <SerifHeading>Cilt için <em>sessiz devrim.</em></SerifHeading>
  */
@@ -35,7 +35,7 @@ export default function SerifHeading({
   return (
     <Tag
       className={cn(
-        "font-display leading-tight text-text-primary [&_em]:not-italic [&_em]:italic [&_em]:text-primary",
+        "font-display font-semibold tracking-tight leading-tight text-text-primary [&_em]:not-italic [&_em]:text-inherit",
         sizeClasses[size],
         className
       )}

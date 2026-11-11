@@ -5,12 +5,8 @@ import { fetchAPI } from "@/lib/fetch-api";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Breadcrumb from "@/components/layout/Breadcrumb";
-import ProductGallery from "@/components/product/ProductGallery";
-import ProductInfoBound from "@/components/product/ProductInfoBound";
-import ProductReviews from "@/components/product/ProductReviews";
+import ProductDetailContent from "@/components/product/ProductDetailContent";
 import SimilarProducts from "@/components/product/SimilarProducts";
-import ProductDetailsTabs from "@/components/product/ProductDetailsTabs";
-import { Card } from "@/components/ui/Card";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -76,7 +72,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const related = Array.isArray(relatedResp) ? relatedResp : [];
   const relatedProducts = related
     .filter((p) => p.id !== product.id)
-    .slice(0, 9);
+    .slice(0, 12);
 
   const base = getSiteBase();
   const productUrl = `${base}/urun/${product.slug}`;
@@ -138,37 +134,15 @@ export default async function ProductDetailPage({ params }: Props) {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <main className="flex-1 theme-product-detail">
+        <div className="theme-container pdp-container">
           <Breadcrumb items={breadcrumbItems} />
 
-          {/* Üst: Galeri + Ana bilgi kartı */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mt-4">
-            <Card className="p-4 md:p-6 bg-white">
-              <ProductGallery
-                images={product.images ?? []}
-                productName={product.name}
-              />
-            </Card>
-
-            <Card className="p-5 md:p-6 bg-white">
-              <ProductInfoBound product={product} />
-            </Card>
-          </div>
-
-          {/* Açıklama / Özellikler — tabs */}
-          <div className="mt-6">
-            <ProductDetailsTabs product={product} />
-          </div>
-
-          {/* Yorumlar */}
-          <div className="mt-6">
-            <ProductReviews productId={product.id} />
-          </div>
+          <ProductDetailContent key={product.id} product={product} />
 
           {/* Benzer Ürünler — slider */}
           {relatedProducts.length > 0 && (
-            <div className="mt-6 mb-10">
+            <div className="pdp-related">
               <SimilarProducts products={relatedProducts} />
             </div>
           )}

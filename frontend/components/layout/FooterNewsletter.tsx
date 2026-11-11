@@ -49,17 +49,17 @@ export default function FooterNewsletter() {
   }
 
   return (
-    <div className="mt-8">
-      <h3 className="font-display text-sm text-white mb-3 uppercase tracking-wider">
+    <div className="theme-newsletter">
+      <h3 className="font-display text-xl text-[#111827] mb-3 font-bold">
         Bültene Katıl
       </h3>
-      <p className="text-xs text-white/60 mb-3 max-w-xs">
+      <p className="text-sm text-[#6b7280] mb-3">
         Yeni ürünler ve özel kampanyalardan ilk siz haberdar olun.
       </p>
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col sm:flex-row gap-2 max-w-sm"
+        className="flex flex-col sm:flex-row gap-0"
       >
         <label htmlFor="footer-newsletter-email" className="sr-only">
           E-posta adresiniz
@@ -73,7 +73,7 @@ export default function FooterNewsletter() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="E-posta adresiniz"
           disabled={submitting}
-          className="flex-1 min-w-0 bg-white/10 border border-white/10 text-white placeholder-white/40 text-sm rounded px-3 py-2 focus:outline-none focus:border-primary disabled:opacity-60"
+          className="flex-1 min-w-0 bg-white border border-[#d1d5db] text-[#111827] placeholder-[#9ca3af] text-sm rounded px-3 py-2 focus:outline-none focus:border-primary disabled:opacity-60"
         />
         <button
           type="submit"

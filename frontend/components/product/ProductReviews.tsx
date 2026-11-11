@@ -1,227 +1,50 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { useProductReviews } from "@/lib/product-reviews";
+import { RatingStars } from "./DetailIcon";
 
-interface Review {
-  id: string;
-  author: string;
-  rating: number;
-  title?: string;
-  body: string;
-  created_at: string;
-}
-
-interface ProductReviewsProps {
-  productId: number;
-}
-
-function storageKey(id: number) {
-  return `product-reviews-${id}`;
-}
-
-export default function ProductReviews({ productId }: ProductReviewsProps) {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [author, setAuthor] = useState("");
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey(productId));
-      if (raw) setReviews(JSON.parse(raw));
-    } catch {}
-  }, [productId]);
-
-  const avg = useMemo(() => {
-    if (reviews.length === 0) return 0;
-    return reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-  }, [reviews]);
-
-  function handleSubmit(e: React.FormEvent) {
+export default function ProductReviews({ productId, productName }: { productId: number; productName: string }) {
+  const { user, isLoading: authLoading } = useAuth();
+  const [page,setPage] = useState(1);
+  const { data, error, isLoading, mutate } = useProductReviews(productId,page);
+  const [rating,setRating] = useState(5);
+  const [title,setTitle] = useState("");
+  const [body,setBody] = useState("");
+  const [submitting,setSubmitting] = useState(false);
+  const [submitted,setSubmitted] = useState(false);
+  const pending = useRef(false);
+  const stats = data?.data.stats;
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!author.trim() || !body.trim()) {
-      toast.error("Ad ve yorum alanı boş bırakılamaz.");
-      return;
-    }
-    setSubmitting(true);
-    const next: Review = {
-      id: crypto.randomUUID(),
-      author: author.trim(),
-      rating,
-      title: title.trim() || undefined,
-      body: body.trim(),
-      created_at: new Date().toISOString(),
-    };
-    const updated = [next, ...reviews];
-    setReviews(updated);
+    if (!user || pending.current) return;
+    if (body.trim().length < 10) { toast.error("Yorum en az 10 karakter olmalıdır."); return; }
+    pending.current = true; setSubmitting(true);
     try {
-      localStorage.setItem(storageKey(productId), JSON.stringify(updated));
-    } catch {}
-    setAuthor("");
-    setTitle("");
-    setBody("");
-    setRating(5);
-    setSubmitting(false);
-    toast.success("Yorumunuz eklendi.");
+      await api.post('/reviews', { product_id: productId, rating, title: title.trim(), body: body.trim() });
+      setSubmitted(true); setTitle(""); setBody("");
+      toast.success("Yorumunuz alındı. Onaylandıktan sonra yayınlanacaktır.");
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Yorum gönderilemedi."); }
+    finally { pending.current = false; setSubmitting(false); }
   }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">Yorumlar</CardTitle>
-            <CardDescription>
-              {reviews.length > 0
-                ? `${reviews.length} yorum • Ortalama ${avg.toFixed(1)} / 5`
-                : "Henüz yorum yapılmamış. İlk yorumu siz yapın."}
-            </CardDescription>
-          </div>
-          {reviews.length > 0 && (
-            <Stars rating={Math.round(avg)} className="text-primary" readonly />
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-3 p-4 rounded-xl bg-primary-soft/30 border border-primary-soft"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Adınız"
-              className="px-3 py-2 text-sm bg-white rounded-lg border border-border focus:outline-none focus:border-primary"
-              maxLength={60}
-              required
-            />
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Başlık (isteğe bağlı)"
-              className="px-3 py-2 text-sm bg-white rounded-lg border border-border focus:outline-none focus:border-primary"
-              maxLength={100}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-secondary">Puan:</span>
-            <Stars rating={rating} onChange={setRating} />
-          </div>
-
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Ürün hakkındaki deneyiminizi paylaşın…"
-            rows={3}
-            className="w-full px-3 py-2 text-sm bg-white rounded-lg border border-border focus:outline-none focus:border-primary resize-none"
-            maxLength={500}
-            required
-          />
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition disabled:opacity-50"
-            >
-              {submitting ? "Gönderiliyor…" : "Yorum Yap"}
-            </button>
-          </div>
-        </form>
-
-        {/* List */}
-        {reviews.length > 0 && (
-          <ul className="space-y-4 divide-y divide-border">
-            {reviews.map((r) => (
-              <li key={r.id} className="pt-4 first:pt-0">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-full bg-primary-soft flex items-center justify-center text-primary font-semibold text-sm">
-                      {r.author.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">
-                        {r.author}
-                      </p>
-                      <p className="text-[11px] text-text-secondary">
-                        {new Date(r.created_at).toLocaleDateString("tr-TR", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                  <Stars rating={r.rating} readonly />
-                </div>
-                {r.title && (
-                  <p className="mt-3 font-medium text-sm text-text-primary">
-                    {r.title}
-                  </p>
-                )}
-                <p className="mt-2 text-sm text-text-secondary leading-relaxed">
-                  {r.body}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function Stars({
-  rating,
-  onChange,
-  readonly = false,
-  className = "",
-}: {
-  rating: number;
-  onChange?: (v: number) => void;
-  readonly?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={`flex items-center gap-0.5 ${className}`}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const filled = n <= rating;
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => !readonly && onChange?.(n)}
-            disabled={readonly}
-            className={[
-              "transition-transform",
-              readonly ? "cursor-default" : "hover:scale-110",
-            ].join(" ")}
-            aria-label={`${n} yıldız`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className={`w-4 h-4 ${filled ? "text-[#f59e0b]" : "text-border"}`}
-              fill="currentColor"
-            >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z" />
-            </svg>
-          </button>
-        );
-      })}
+  return <div className="pdp-reviews">
+    <h2>{productName} için değerlendirmeler</h2>
+    {isLoading ? <p role="status">Değerlendirmeler yükleniyor…</p> : error ? <p role="alert">Değerlendirmeler alınamadı. <button type="button" onClick={() => mutate()}>Tekrar dene</button></p> : <>
+      <div className="pdp-review-summary"><strong>{stats?.total_count ? stats.average_rating.toLocaleString("tr-TR",{minimumFractionDigits:1,maximumFractionDigits:2}) : "—"}</strong><div><RatingStars value={stats?.average_rating ?? 0}/><p>{stats?.total_count ? `${stats.total_count} değerlendirme` : "Henüz değerlendirme yapılmamış."}</p></div></div>
+      {!!data?.data.reviews.length && <ul className="pdp-review-list">{data.data.reviews.map(review => <li key={review.id}><div className="pdp-review-avatar" aria-hidden="true">{review.user?.first_name?.charAt(0) || "K"}</div><div><RatingStars value={review.rating}/><p className="pdp-review-author"><strong>{review.user?.first_name || "Kullanıcı"}{review.user?.last_name ? ` ${review.user.last_name.charAt(0)}.` : ""}</strong> — {new Date(review.created_at).toLocaleDateString("tr-TR")}</p>{review.title && <h3>{review.title}</h3>}<p>{review.body}</p></div></li>)}</ul>}
+      {data && data.pagination.total_pages > 1 && <nav className="pdp-review-pagination" aria-label="Değerlendirme sayfaları"><button type="button" disabled={page <= 1} onClick={() => setPage(p=>p-1)}>Önceki</button><span>{page} / {data.pagination.total_pages}</span><button type="button" disabled={page >= data.pagination.total_pages} onClick={() => setPage(p=>p+1)}>Sonraki</button></nav>}
+    </>}
+    <div className="pdp-review-form"><h3>Değerlendirme ekle</h3>
+      {authLoading ? <p>Oturum kontrol ediliyor…</p> : !user ? <p>Ürünü değerlendirmek için <Link href="/giris-yap">giriş yapın.</Link></p> : submitted ? <p role="status">Değerlendirmeniz alındı ve onay bekliyor.</p> : <form onSubmit={submit}>
+        <p>Yorumunuz onaylandıktan sonra yayınlanır.</p>
+        <label>Puanınız <span aria-hidden="true">*</span><select value={rating} onChange={e=>setRating(Number(e.target.value))}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} yıldız</option>)}</select></label>
+        <label>Başlık (isteğe bağlı)<input value={title} maxLength={200} onChange={e=>setTitle(e.target.value)}/></label>
+        <label>Değerlendirmeniz <span aria-hidden="true">*</span><textarea value={body} minLength={10} maxLength={5000} required rows={5} onChange={e=>setBody(e.target.value)}/></label>
+        <button type="submit" disabled={submitting}>{submitting ? "Gönderiliyor…" : "Değerlendirmeyi gönder"}</button>
+      </form>}
     </div>
-  );
+  </div>;
 }

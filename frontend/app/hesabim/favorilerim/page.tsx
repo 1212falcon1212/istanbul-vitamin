@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useFavorites } from "@/lib/favorites";
 import Spinner from "@/components/ui/Spinner";
 import ProductGrid from "@/components/product/ProductGrid";
 import PaginationComponent from "@/components/ui/Pagination";
 import type { Favorite, Product, Pagination } from "@/types";
 
 export default function FavorilerimPage() {
+  const { toggle: toggleFavorite } = useFavorites();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -46,7 +48,7 @@ export default function FavorilerimPage() {
 
   async function handleToggleFavorite(product: Product) {
     try {
-      await api.delete(`/favorites/${product.id}`);
+      await toggleFavorite(product.id);
       setFavorites((prev) => prev.filter((f) => f.product_id !== product.id));
       setFavoriteIds((prev) => {
         const next = new Set(prev);

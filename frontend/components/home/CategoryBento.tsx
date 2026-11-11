@@ -1,172 +1,86 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import type { Category } from "@/types";
-import SectionLabel from "@/components/ui/SectionLabel";
-import SerifHeading from "@/components/ui/SerifHeading";
-import FadeUp from "@/components/animations/FadeUp";
+import styles from "./CategoryBento.module.css";
 
-interface CategoryBentoProps {
-  categories: Category[];
-}
-
-type CardTheme = {
-  bg: string;
-  textPrimary: string;
-  textSecondary: string;
-  numberColor: string;
-  dark: boolean;
-};
-
-const cardThemes: CardTheme[] = [
-  {
-    bg: "bg-bg-footer",
-    textPrimary: "text-white",
-    textSecondary: "text-white/50",
-    numberColor: "text-white/40",
-    dark: true,
-  },
-  {
-    bg: "bg-primary-soft",
-    textPrimary: "text-text-primary",
-    textSecondary: "text-text-secondary",
-    numberColor: "text-text-secondary",
-    dark: false,
-  },
-  {
-    bg: "bg-[#b8a4f0]",
-    textPrimary: "text-white",
-    textSecondary: "text-white/60",
-    numberColor: "text-white/50",
-    dark: true,
-  },
-  {
-    bg: "bg-primary",
-    textPrimary: "text-white",
-    textSecondary: "text-white/60",
-    numberColor: "text-white/50",
-    dark: true,
-  },
-  {
-    bg: "bg-white",
-    textPrimary: "text-text-primary",
-    textSecondary: "text-text-secondary",
-    numberColor: "text-text-secondary",
-    dark: false,
-  },
-  {
-    bg: "bg-primary-soft",
-    textPrimary: "text-text-primary",
-    textSecondary: "text-text-secondary",
-    numberColor: "text-text-secondary",
-    dark: false,
-  },
-  {
-    bg: "bg-white",
-    textPrimary: "text-text-primary",
-    textSecondary: "text-text-secondary",
-    numberColor: "text-text-secondary",
-    dark: false,
-  },
+const editorial = [
+  { slug: "cilt-bakimi", description: "Cildinizin ihtiyaçlarına özel bakım ritüelleri." },
+  { slug: "anne-bebek", description: "Sizin ve bebeğinizin hassas dünyası için." },
+  { slug: "besin-takviyeleri", description: "Günlük yaşamınıza eşlik eden destekler." },
+  { slug: "gunes-urunleri", description: "Cildinizi güneşin zararlı etkilerinden koruyun." },
+  { slug: "sac-bakimi", description: "Saçlarınıza iyi gelen bakımı keşfedin." },
+  { slug: "kisisel-bakim", description: "Kendinize ayırdığınız anları güzelleştirin." },
+  { slug: "makyaj", description: "Güzelliğinize kendi renginizi katın." },
 ];
 
-const PLACEHOLDER_CATEGORIES: Partial<Category>[] = [
-  { id: -1, name: "Nemlendirici", slug: "nemlendirici" },
-  { id: -2, name: "Güneş Koruyucu", slug: "gunes-koruyucu" },
-  { id: -3, name: "Temizleyici", slug: "temizleyici" },
-  { id: -4, name: "Serum", slug: "serum" },
-  { id: -5, name: "Göz Bakımı", slug: "goz-bakimi" },
-  { id: -6, name: "Dudak Bakımı", slug: "dudak-bakimi" },
-  { id: -7, name: "Maske", slug: "maske" },
-];
+export default function CategoryBento({ categories }: { categories: Category[] }) {
+  const items = editorial.flatMap((item, image) => {
+    const category = categories.find((category) => category.slug === item.slug);
+    return category ? [{ ...item, category, image }] : [];
+  });
+  const [active, setActive] = useState(() => Math.max(0, items.findIndex((item) => item.slug === "gunes-urunleri")));
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const reducedMotion = useReducedMotion();
+  const touchX = useRef<number | null>(null);
+  const current = items.length ? active % items.length : 0;
+  const move = (direction: number) => setActive((value) => (value + direction + items.length) % items.length);
 
-export default function CategoryBento({ categories }: CategoryBentoProps) {
-  const rawItems = categories.length > 0 ? categories : PLACEHOLDER_CATEGORIES;
-  const items = rawItems.slice(0, 7) as Category[];
+  useEffect(() => {
+    if (items.length < 2 || reducedMotion || hovered || focused || !playing) return;
+    const timer = window.setInterval(() => setActive((value) => (value + 1) % items.length), 6000);
+    return () => window.clearInterval(timer);
+  }, [items.length, reducedMotion, hovered, focused, playing]);
 
-  // Pad to 7 if needed
-  const padded: (Category | null)[] = [...items];
-  while (padded.length < 7) padded.push(null);
+  if (!items.length) return null;
 
-  return (
-    <FadeUp>
-      <section>
-        {/* Header */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <SectionLabel number="002" title="KATEGORİLER" />
-            <SerifHeading size="md" className="mt-2">
-              Favori <em>kategorini</em> bul.
-            </SerifHeading>
+  return <section className={styles.section} aria-labelledby="category-discovery-title"
+    onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+    onFocusCapture={() => setFocused(true)} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
+    <div className={styles.header}>
+      <div>
+        <p className={styles.eyebrow}>KATEGORİLER</p>
+        <h2 id="category-discovery-title">Dermokozmetik dünyasını keşfet.</h2>
+        <p className={styles.intro}>Cilt bakımından güneş korumasına, anne bebekten besin takviyelerine<br className={styles.desktopBreak} /> ihtiyacınız olan her kategori tek bir yerde.</p>
+      </div>
+      <div className={styles.trust}>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v6c0 4-8 8-8 8s-8-4-8-8V7l8-4Z"/><path d="m8 12 3 3 5-6"/></svg>Dermokozmetik<br/>Güvencesi</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20C0 8 13 3 21 3c0 12-5 19-17 17Zm0 0L17 7"/></svg>Seçkin<br/>Markalar</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-8l1-7Z"/></svg>Hızlı<br/>Teslimat</span>
+      </div>
+    </div>
+    <div className={styles.stage} role="region" aria-roledescription="karusel" aria-label="Ürün kategorileri" tabIndex={0}
+      onKeyDown={(event) => { if (event.target === event.currentTarget && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); move(event.key === "ArrowRight" ? 1 : -1); } }}
+      onTouchStart={(event) => { touchX.current = event.touches[0].clientX; }}
+      onTouchEnd={(event) => { if (touchX.current !== null) { const distance = event.changedTouches[0].clientX - touchX.current; if (Math.abs(distance) > 45) move(distance < 0 ? 1 : -1); } touchX.current = null; }}>
+      {items.map((item, index) => {
+        let offset = (index - current + items.length) % items.length;
+        if (offset > items.length / 2) offset -= items.length;
+        const distance = Math.abs(offset);
+        const selected = index === current;
+        const x = offset === 0 ? 0 : Math.sign(offset) * (205 + (distance - 1) * 170);
+        return <article key={item.slug} className={`${styles.card} ${selected ? styles.active : ""}`} data-side={offset > 0 ? "right" : "left"} style={{ zIndex: 10 - distance, transform: `translateX(calc(-50% + ${x} * var(--category-unit))) translateY(calc(${selected ? 0 : 16 + distance * 4} * var(--category-unit))) scale(${selected ? 1 : .94 - distance * .035})` }} aria-label={item.category.name}>
+          <div className={styles.photo} style={{ backgroundPosition: `${item.image / 6 * 100}% top` }} />
+          <div className={styles.shade} />
+          {selected && <span className={styles.featured}>✧ Öne Çıkan Kategori</span>}
+          {!selected && <button tabIndex={-1} className={styles.selectCard} onClick={() => setActive(index)} aria-label={`${item.category.name} kategorisini öne getir`} />}
+          <div className={styles.content}>
+            <h3>{item.category.name}</h3>
+            {selected && <p>{item.description}</p>}
+            <Link href={`/${item.category.slug}`} tabIndex={selected ? 0 : -1} className={styles.cta}>{selected ? "Ürünleri İncele" : "Ürünleri Keşfet"} <span aria-hidden="true">→</span></Link>
           </div>
-          <Link
-            href="/kategoriler"
-            className="text-xs uppercase tracking-widest text-text-secondary hover:text-primary transition-colors hidden sm:block"
-          >
-            Tüm kategoriler →
-          </Link>
-        </div>
-
-        {/* Bento grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {padded.map((cat, i) => {
-            const theme = cardThemes[i] ?? cardThemes[4];
-            const isLarge = i === 0;
-            const slug = cat?.slug ?? "#";
-            const name = cat?.name ?? "";
-
-            return (
-              <Link
-                key={cat?.id ?? `placeholder-${i}`}
-                href={cat ? `/${slug}` : "/kategoriler"}
-                className={[
-                  isLarge ? "md:row-span-2" : "",
-                  isLarge ? "min-h-[280px]" : "min-h-[130px]",
-                ].join(" ")}
-                tabIndex={cat ? 0 : -1}
-                aria-label={name || undefined}
-              >
-                <motion.div
-                  className={`h-full rounded-2xl overflow-hidden cursor-pointer ${theme.bg}`}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <div className="p-5 h-full flex flex-col justify-between">
-                    <p
-                      className={`text-[9px] uppercase tracking-widest font-body ${theme.numberColor}`}
-                    >
-                      — 0{i + 1}
-                    </p>
-                    <div>
-                      {name && (
-                        <p
-                          className={`font-display text-lg leading-tight ${theme.textPrimary}`}
-                        >
-                          {name}
-                        </p>
-                      )}
-                      <p className={`text-xs mt-1 opacity-70 ${theme.textSecondary}`}>
-                        ürünler →
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Mobile "all categories" link */}
-        <div className="mt-4 sm:hidden text-center">
-          <Link
-            href="/kategoriler"
-            className="text-xs uppercase tracking-widest text-text-secondary hover:text-primary transition-colors"
-          >
-            Tüm kategoriler →
-          </Link>
-        </div>
-      </section>
-    </FadeUp>
-  );
+        </article>;
+      })}
+    </div>
+    <div className={styles.controls}>
+      <button onClick={() => move(-1)} aria-label="Önceki kategori" className={styles.arrow}>←</button>
+      <div className={styles.dots} aria-label="Kategori seçimi">{items.map((item, index) => <button key={item.slug} aria-label={item.category.name} aria-pressed={current === index} onClick={() => setActive(index)} className={current === index ? styles.selectedDot : ""} />)}</div>
+      <button onClick={() => move(1)} aria-label="Sonraki kategori" className={styles.arrow}>→</button>
+      {!reducedMotion && <button className={styles.play} onClick={() => setPlaying(!playing)} aria-label={playing ? "Otomatik geçişi durdur" : "Otomatik geçişi başlat"}>{playing ? "Ⅱ" : "▷"}</button>}
+    </div>
+  </section>;
 }

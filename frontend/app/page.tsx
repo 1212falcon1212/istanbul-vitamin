@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { fetchHomepageData } from "@/lib/homepage-api";
-import { bannerImage } from "@/lib/placeholder-image";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-
 import HeroSection from "@/components/home/HeroSection";
-import BrandMarquee from "@/components/home/BrandMarquee";
-import CategoryBento from "@/components/home/CategoryBento";
-import RecommendedProducts from "@/components/home/RecommendedProducts";
-import SeasonalBanner from "@/components/home/SeasonalBanner";
-import TrendingWall from "@/components/home/TrendingWall";
+import CategoryProducts from "@/components/home/CategoryProducts";
+import ProductSelection from "@/components/home/ProductSelection";
 import BrandSpotlight from "@/components/home/BrandSpotlight";
-import SkinConcerns from "@/components/home/SkinConcerns";
-import DualBanner from "@/components/home/DualBanner";
-import NewArrivals from "@/components/home/NewArrivals";
+import ThemePromos from "@/components/home/ThemePromos";
+import BannerProductRows from "@/components/home/BannerProductRows";
+import { bannersAt } from "@/lib/banner-slots";
+import ProductCard from "@/components/product/ProductCard";
 
 export const revalidate = 300;
 
@@ -25,59 +20,28 @@ export const metadata: Metadata = {
     "5.200'den fazla orijinal dermokozmetik ürün tek platformda. Cilt bakımı, saç bakımı, güneş ürünleri ve daha fazlası.",
 };
 
-// Ana sayfadaki tüm bölümler için tek standart genişlik.
-const SECTION = "max-w-7xl mx-auto px-4 md:px-6 lg:px-8";
-
 export default async function HomePage() {
   const data = await fetchHomepageData();
+  return <>
+    <Header />
+    <main className="storefront-home grogin-home">
+      <HeroSection banners={data.banners} featuredProducts={data.trending.slice(0,4)} categories={data.categories} />
+      <div className="theme-container theme-home-sections">
+        <ThemePromos banners={data.banners} position="promo_triple" />
+        <ProductSelection newArrivals={data.newArrivals} bestSellers={data.bestSellers} />
+        <ThemePromos banners={data.banners} position="promo_tall" />
+        <section aria-labelledby="theme-featured-title">
+          <div className="catalog-section-heading"><div><h2 id="theme-featured-title">Öne çıkan ürünler</h2><p>Bakım rutinin için seçtiğimiz ürünleri keşfet.</p></div><Link className="catalog-section-link" href="/magaza">Tümünü gör →</Link></div>
+          <div className="catalog-product-grid">{data.trending.slice(0,12).map(product => <ProductCard key={product.id} product={product}/>)}</div>
+        </section>
+        <ThemePromos banners={data.banners} position="promo_wide" />
+        <BannerProductRows banners={data.banners} products={data.bestSellers} />
+        <ThemePromos banners={data.banners} position="promo_strip" />
+        <BrandSpotlight spotlight={data.spotlight} banner={bannersAt(data.banners, "promo_brand")[0]}/>
+        <CategoryProducts categories={data.categories}/>
 
-  const finalBanner =
-    data.banners?.find((b) => b.position === "footer") ??
-    data.banners?.[2] ??
-    data.banners?.[0];
-  const finalSrc = finalBanner?.image_url || bannerImage(undefined, "footer-banner");
-  const finalHref = finalBanner?.link_url || "/markalar";
-
-  return (
-    <>
-      <Header />
-      <main>
-        {/* Hero slider tam genişlik; yan bannerlar kendi içinde 7xl */}
-        <HeroSection
-          banners={data.banners}
-          featuredProducts={data.trending.slice(0, 4)}
-          categories={data.categories}
-        />
-
-        <BrandMarquee brands={data.brands} />
-
-        <div className={`${SECTION} py-10 space-y-12`}>
-          <RecommendedProducts products={data.recommended} />
-          <CategoryBento categories={data.categories} />
-          <SeasonalBanner banners={data.banners} />
-          <TrendingWall products={data.trending} />
-          <BrandSpotlight spotlight={data.spotlight} />
-          <SkinConcerns concerns={data.concerns} />
-          <DualBanner banners={data.banners} />
-          <NewArrivals products={data.newArrivals} />
-
-          {/* Final big banner */}
-          <Link
-            href={finalHref}
-            aria-label={finalBanner?.title || "Tüm markalar"}
-            className="block relative w-full max-w-full overflow-hidden rounded-2xl aspect-[1318/358] bg-white group"
-          >
-            <Image
-              src={finalSrc}
-              alt={finalBanner?.title || "Tüm markalar"}
-              fill
-              sizes="(min-width:1024px) 33vw, 100vw"
-              className="object-contain transition-transform duration-700 group-hover:scale-105"
-            />
-          </Link>
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
+        <section aria-label="Markalar"><div className="catalog-section-heading"><div><h2>Seçkin markalar</h2><p>Dermokozmetik dünyasının markaları.</p></div><Link href="/markalar" className="catalog-section-link">Tümünü gör →</Link></div><div className="theme-brand-list">{data.brands.slice(0,6).map(brand => <Link key={brand.id} href={`/markalar/${brand.slug}`}><strong>{brand.name}</strong><span>Ürünleri keşfet →</span></Link>)}</div></section>
+      </div>
+    </main><Footer />
+  </>;
 }

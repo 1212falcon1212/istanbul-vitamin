@@ -151,8 +151,9 @@ export default function Footer() {
   ].filter((s) => s.href); // yalnızca URL'si olanları göster
 
   return (
-    <footer className="mt-20 text-white/80 bg-gradient-to-b from-[#0f0a1e] to-[#1a1530]">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 pt-14 pb-6">
+    <footer className="theme-footer mt-12 bg-[#f3f4f6] text-[#6b7280]">
+      <div className="theme-container pt-14 pb-6">
+        <FooterNewsletter />
         {/* Üst: marka + kolonlar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Marka kolonu */}
@@ -168,21 +169,21 @@ export default function Footer() {
               ) : settingsLoading ? (
                 <span className="block h-12 w-40" aria-hidden />
               ) : (
-                <span className="font-display text-2xl text-white">
+                <span className="font-display text-2xl text-[#111827]">
                   İstanbul
                   <span className="text-primary">Vitamin</span>
                 </span>
               )}
             </Link>
 
-            <p className="text-sm text-white/60 leading-relaxed max-w-sm">
+            <p className="text-sm text-[#6b7280] leading-relaxed max-w-sm">
               {siteDesc}
             </p>
 
             <div className="space-y-2 text-sm">
               <a
                 href={`tel:${phone.replace(/\s/g, "")}`}
-                className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-[#6b7280] hover:text-primary transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" className="w-4 h-4 opacity-70">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
@@ -191,7 +192,7 @@ export default function Footer() {
               </a>
               <a
                 href={`mailto:${email}`}
-                className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+                className="flex items-center gap-2 text-[#6b7280] hover:text-primary transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.6} stroke="currentColor" className="w-4 h-4 opacity-70">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -200,7 +201,7 @@ export default function Footer() {
               </a>
             </div>
 
-            <FooterNewsletter />
+
 
             {socials.length > 0 && (
               <div className="flex items-center gap-2 pt-2">
@@ -211,7 +212,7 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={s.label}
-                    className="w-9 h-9 rounded-full bg-white/8 hover:bg-primary text-white/80 hover:text-white inline-flex items-center justify-center transition-all hover:scale-105"
+                    className="w-9 h-9 rounded-full bg-white hover:bg-primary text-[#6b7280] hover:text-primary inline-flex items-center justify-center transition-all hover:scale-105"
                   >
                     {s.icon}
                   </a>
@@ -224,7 +225,7 @@ export default function Footer() {
           <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
             {COLUMNS.map((col) => (
               <div key={col.title}>
-                <p className="text-[11px] uppercase tracking-widest text-white font-semibold mb-4">
+                <p className="text-[11px] uppercase tracking-widest text-[#111827] font-semibold mb-4">
                   {col.title}
                 </p>
                 <ul className="space-y-2.5">
@@ -232,7 +233,7 @@ export default function Footer() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        className="inline-block text-sm text-white/55 hover:text-white hover:translate-x-0.5 transition-all"
+                        className="inline-block text-sm text-[#111827]/55 hover:text-primary hover:translate-x-0.5 transition-all"
                       >
                         {link.label}
                       </Link>
@@ -245,18 +246,18 @@ export default function Footer() {
         </div>
 
         {/* Trust row */}
-        <div className="mt-12 pt-8 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-12 pt-8 border-t border-[#d1d5db] grid grid-cols-2 md:grid-cols-4 gap-4">
           {TRUST_ITEMS.map((item) => (
             <div
               key={item.title}
               className="flex items-center gap-3"
             >
-              <div className="w-10 h-10 rounded-full bg-white/8 text-white flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-white text-[#111827] flex items-center justify-center shrink-0">
                 {item.icon}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{item.title}</p>
-                <p className="text-[11px] text-white/50 truncate">{item.desc}</p>
+                <p className="text-sm font-semibold text-[#111827] truncate">{item.title}</p>
+                <p className="text-[11px] text-[#6b7280] truncate">{item.desc}</p>
               </div>
             </div>
           ))}
@@ -264,9 +265,9 @@ export default function Footer() {
       </div>
 
       {/* Alt bar */}
-      <div className="border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <p className="text-xs text-white/50">
+      <div className="border-t border-[#d1d5db]">
+        <div className="theme-container py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <p className="text-xs text-[#6b7280]">
             © {new Date().getFullYear()} {siteName}. Tüm hakları saklıdır.
           </p>
 
@@ -275,7 +276,7 @@ export default function Footer() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-xs text-white/50 hover:text-white transition-colors"
+                className="text-xs text-[#6b7280] hover:text-primary transition-colors"
               >
                 {l.label}
               </Link>
@@ -286,7 +287,7 @@ export default function Footer() {
             {PAYMENT_LOGOS.map((name) => (
               <span
                 key={name}
-                className="text-[10px] uppercase tracking-wider text-white/70 bg-white/10 rounded px-2 py-1"
+                className="text-[10px] uppercase tracking-wider text-[#6b7280] bg-white rounded px-2 py-1"
               >
                 {name}
               </span>

@@ -1,161 +1,54 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import type { Banner, Product, Category } from "@/types";
-import { LOCAL_BANNERS } from "@/lib/placeholder-image";
 import { resolveImageUrl } from "@/lib/utils";
+import CategoryMenu from "@/components/layout/CategoryMenu";
+import BannerPicture from "./BannerPicture";
 
-interface HeroSectionProps {
-  banners: Banner[];
-  featuredProducts: Product[];
-  categories: Category[];
+interface HeroSectionProps { banners: Banner[]; children?: ReactNode; featuredProducts: Product[]; categories: Category[]; }
+function bannerHref(value?: string) {
+  if (value?.startsWith("/") && !value.startsWith("//")) return value;
+  if (value && /^https?:\/\//i.test(value)) return value;
+  return "/magaza";
 }
-
-type Item = { image: string; href: string; alt: string };
-
-/**
- * Hero = tek büyük slider (animasyonlu) + altında 3 banner satırı.
- * Tüm görseller admin paneli `banners` tablosundan gelir — pozisyonlara göre:
- *   - position="hero"       : üstteki büyük slider
- *   - position="hero_tile"  : altındaki 3 tile (yoksa hero'dan veya yerel pool'dan doldurulur)
- */
-export default function HeroSection({ banners }: HeroSectionProps) {
-  const active = (banners ?? []).filter((b) => b.is_active !== false);
-  const hero = active.filter((b) => b.position === "hero");
-  const tiles = active.filter((b) => b.position === "hero_tile");
-
-  const mapBanner = (b: Banner, fallbackAlt: string): Item => ({
-    image: resolveImageUrl(b.image_url) || LOCAL_BANNERS[0],
-    href: b.link_url || "/magaza",
-    alt: b.title || fallbackAlt,
-  });
-
-  const sliderItems: Item[] =
-    hero.length > 0
-      ? hero.map((b, i) => mapBanner(b, `Kampanya ${i + 1}`))
-      : LOCAL_BANNERS.slice(0, 3).map((image, i) => ({
-          image,
-          href: "/magaza",
-          alt: `Kampanya ${i + 1}`,
-        }));
-
-  const belowItems: Item[] =
-    tiles.length > 0
-      ? tiles.slice(0, 3).map((b, i) => mapBanner(b, `Öne çıkan ${i + 1}`))
-      : LOCAL_BANNERS.slice(3, 6).map((image, i) => ({
-          image,
-          href: "/magaza",
-          alt: `Öne çıkan ${i + 1}`,
-        }));
-  // 3 tile doldurulmadıysa yerel pool ile tamamla
-  while (belowItems.length < 3) {
-    const i = belowItems.length;
-    belowItems.push({
-      image: LOCAL_BANNERS[(3 + i) % LOCAL_BANNERS.length],
-      href: "/magaza",
-      alt: `Öne çıkan ${i + 1}`,
-    });
-  }
-
-  return (
-    <section className="w-full py-4 space-y-4">
-      {/* Ana slider — tam genişlik */}
-      <div className="w-full px-4 md:px-6 lg:px-8">
-        <HeroSlider items={sliderItems} />
-      </div>
-
-      {/* Alt 3 banner — ortalı */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
-        {belowItems.map((item, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.08 * i, ease: [0.22, 1, 0.36, 1] }}
-            className="min-w-0"
-          >
-            <Link
-              href={item.href}
-              aria-label={item.alt}
-              className="relative block w-full overflow-hidden rounded-2xl bg-white group aspect-[1318/358]"
-            >
-              <Image
-                src={item.image}
-                alt={item.alt}
-                fill
-                sizes="(min-width:1024px) 33vw, 100vw"
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-              />
-            </Link>
-          </motion.div>
-        ))}
-      </div>
-      </div>
-    </section>
-  );
-}
-
-function HeroSlider({ items }: { items: Item[] }) {
+const benefits = [
+  ["◇", "Online alışveriş", "Bakım ihtiyaçlarınızı kolayca keşfedin."],
+  ["✧", "Yeni ürünler ve fırsatlar", "Sevdiğiniz markaların yeniliklerini inceleyin."],
+  ["♡", "Dermokozmetik seçkisi", "Günlük bakımınıza uygun ürünleri bulun."],
+  ["→", "Aynı gün kargo", "Stoktaki ürünleriniz aynı gün kargoda."],
+];
+export default function HeroSection({ banners, children, categories }: HeroSectionProps) {
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    if (items.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % items.length), 5000);
-    return () => clearInterval(id);
-  }, [items.length]);
-
-  const current = items[index];
-  if (!current) return null;
-
-  return (
-    <div className="relative w-full max-w-full rounded-2xl overflow-hidden bg-white aspect-[1318/358]">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={index}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0"
-        >
-          <Link
-            href={current.href}
-            aria-label={current.alt}
-            className="block w-full h-full group"
-          >
-            <Image
-              src={current.image}
-              alt={current.alt}
-              fill
-              sizes="100vw"
-              priority={index === 0}
-              className="object-cover object-center transition-transform duration-700 group-hover:scale-105"
-            />
-          </Link>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Dots */}
-      {items.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {items.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Slide ${i + 1}`}
-              className={[
-                "h-2 rounded-full transition-all",
-                i === index ? "w-8 bg-white" : "w-2 bg-white/60 hover:bg-white/80",
-              ].join(" ")}
-            />
-          ))}
-        </div>
-      )}
+  const active = banners.filter(b => b.is_active && b.position === "hero").sort((a,b) => a.sort_order-b.sort_order || a.id-b.id);
+  const hero = active[index % (active.length || 1)];
+  const readyArtwork = hero?.image_fit === "artwork";
+  return <section aria-label="Öne çıkan kampanyalar" className="shop-hero-section">
+    {readyArtwork && <h1 className="sr-only">İstanbul Vitamin — Dermokozmetik ve bakım ürünleri</h1>}
+    <div className="shop-hero-container">
+      <div className="shop-hero-grid">
+        <aside className="shop-hero-categories" aria-label="Ürün kategorileri"><CategoryMenu categories={categories} /></aside>
+        {hero && <div data-banner-id={hero.id} data-banner-position="hero" className={`shop-hero-slide ${readyArtwork || !hero.secondary_image_url ? "shop-hero-artwork" : ""} ${readyArtwork ? "shop-hero-ready" : ""}`} style={{backgroundColor: hero.background_color || "#f0f0ef"}}>
+          <div className="shop-hero-art">
+            {readyArtwork ? <BannerPicture banner={hero} eager /> : hero.secondary_image_url ? <Image src={resolveImageUrl(hero.secondary_image_url)} alt={hero.secondary_image_alt || hero.title || "Kampanya"} fill priority sizes="(min-width:1024px) 45vw, 100vw" className={hero.image_fit === "contain" ? "object-contain" : "object-cover"} /> : <picture>
+              {hero.image_url_mobile && <source media="(max-width:767px)" srcSet={resolveImageUrl(hero.image_url_mobile)} />}
+              <img src={resolveImageUrl(hero.image_url)} alt={hero.title || "Kampanya"} fetchPriority="high" className="h-full w-full object-cover" />
+            </picture>}
+          </div>
+          {(readyArtwork || (!hero.title && !hero.subtitle && !hero.button_text)) && <Link className="shop-hero-full-link" href={bannerHref(hero.link_url)} aria-label={hero.title || "Kampanyayı keşfet"} />}
+          {!readyArtwork && (hero.title || hero.subtitle || hero.button_text) && <div className="shop-hero-copy">
+            <span className="shop-hero-label">Bakımına iyi gelenler</span>
+            {hero.title && <h1>{hero.title}</h1>}
+            {hero.subtitle && <p>{hero.subtitle}</p>}
+            {hero.link_url && <Link className="shop-hero-cta" href={bannerHref(hero.link_url)}>{hero.button_text || "Ürünleri keşfet"}<span aria-hidden>→</span></Link>}
+            {hero.secondary_link_url && hero.secondary_button_text && <Link className="shop-hero-secondary" href={bannerHref(hero.secondary_link_url)}>{hero.secondary_button_text} →</Link>}
+          </div>}
+          {active.length > 1 && <div className="shop-hero-dots" aria-label="Banner seçimi">{active.map((b,i) => <button key={b.id} aria-label={`${i+1}. banner`} aria-pressed={i === index} onClick={() => setIndex(i)} />)}</div>}
+        </div>}
+      </div>
+      <div className="shop-benefits">{benefits.map(([icon,title,description]) => <div key={title}><span aria-hidden className="shop-benefit-icon">{icon}</span><div><h2>{title}</h2><p>{description}</p></div></div>)}</div>
     </div>
-  );
+    {children}
+  </section>;
 }

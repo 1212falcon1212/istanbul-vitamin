@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Product } from "@/types";
+import { productPurchaseState } from "@/lib/product-purchase";
 import { useCart } from "@/lib/cart";
 import { useCartDrawer } from "@/lib/cart-drawer";
 import { useFavorites } from "@/lib/favorites";
@@ -12,14 +13,17 @@ import ProductInfo from "./ProductInfo";
  * ProductInfo'yu cart + favorites context'ine bağlayan ince client wrapper.
  * Detay sayfası server component olduğu için context'leri burada bağlıyoruz.
  */
-export default function ProductInfoBound({ product }: { product: Product }) {
+export default function ProductInfoBound({ product, onShowTab }: { product: Product; onShowTab?: (tab: "reviews" | "specs") => void }) {
   const { addItem } = useCart();
   const { open: openDrawer } = useCartDrawer();
   const { isFavorite, toggle } = useFavorites();
   const [loading, setLoading] = useState(false);
+  const pending = useRef(false);
 
   async function handleAddToCart(quantity: number, variantId?: number) {
-    if (product.stock <= 0 || loading) return;
+    const { canPurchase, stock } = productPurchaseState(product, variantId);
+    if (pending.current || !canPurchase || !Number.isInteger(quantity) || quantity < 1 || quantity > stock) return;
+    pending.current = true;
     setLoading(true);
     try {
       await addItem(product.id, quantity, variantId);
@@ -29,6 +33,7 @@ export default function ProductInfoBound({ product }: { product: Product }) {
         err instanceof Error ? err.message : "Ürün sepete eklenemedi"
       );
     } finally {
+      pending.current = false;
       setLoading(false);
     }
   }
@@ -50,6 +55,8 @@ export default function ProductInfoBound({ product }: { product: Product }) {
   return (
     <ProductInfo
       product={product}
+      loading={loading}
+      onShowTab={onShowTab}
       onAddToCart={handleAddToCart}
       onToggleFavorite={handleToggleFav}
       isFavorite={isFavorite(product.id)}

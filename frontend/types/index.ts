@@ -371,6 +371,16 @@ export interface Banner {
   image_url: string;
   image_url_mobile?: string;
   link_url?: string;
+  subtitle?: string;
+  button_text?: string;
+  secondary_button_text?: string;
+  secondary_link_url?: string;
+  secondary_image_url?: string;
+  secondary_image_alt?: string;
+  background_color?: string;
+  image_fit?: string;
+  starts_at?: string;
+  expires_at?: string;
   sort_order: number;
   is_active: boolean;
 }

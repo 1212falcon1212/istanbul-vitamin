@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import type { Product } from "@/types";
-import { formatPrice } from "@/lib/utils";
+import ProductCard from "@/components/product/ProductCard";
 
 const API =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
@@ -97,51 +97,12 @@ export default function SearchPreview({
             </Link>
           </div>
         ) : (
-          <ul className="max-h-[460px] overflow-y-auto">
-            {results.map((p) => {
-              const img =
-                p.images?.find((i) => i.is_primary)?.image_url ??
-                p.images?.[0]?.image_url ??
-                null;
-              return (
-                <li key={p.id}>
-                  <Link
-                    href={`/urun/${p.slug}`}
-                    onClick={onClose}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-primary-soft/50 transition-colors border-b border-border last:border-0"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-white border border-border shrink-0 overflow-hidden flex items-center justify-center text-text-secondary">
-                      {img ? (
-                        <img
-                          src={img}
-                          alt={p.name}
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-                          <rect x="3" y="5" width="18" height="14" rx="2" />
-                          <circle cx="8.5" cy="10.5" r="1.5" />
-                          <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {p.brand?.name && (
-                        <p className="text-[10px] uppercase tracking-wider text-text-secondary truncate">
-                          {p.brand.name}
-                        </p>
-                      )}
-                      <p className="text-sm text-text-primary line-clamp-1">
-                        {p.name}
-                      </p>
-                    </div>
-                    <p className="font-semibold text-sm text-primary price shrink-0">
-                      {formatPrice(p.price)}
-                    </p>
-                  </Link>
-                </li>
-              );
-            })}
+          <ul className="max-h-[460px] overflow-y-auto grid grid-cols-2">
+            {results.map((product) => (
+              <li key={product.id} className="p-2" onClick={(event) => {
+                if ((event.target as HTMLElement).closest("a")) onClose?.();
+              }}><ProductCard product={product} /></li>
+            ))}
           </ul>
         )}
       </div>

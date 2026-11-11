@@ -228,10 +228,10 @@ export default function ProductListing({
     inStockOnly;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+    <div className="theme-listing grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-8">
       {/* Sidebar */}
       <aside className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-        <div className="bg-white border border-border rounded-2xl p-5 space-y-6">
+        <div className="theme-filters bg-white space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-base text-text-primary">Filtrele</h2>
             {hasActiveFilters && (
@@ -352,8 +352,9 @@ export default function ProductListing({
 
       {/* Content */}
       <div className="min-w-0">
+        <div className="theme-shop-banner"><span>Bakım dünyasını keşfet</span><h2>Aradığın bakım, sevdiğin markalar.</h2><p>Ürünleri ihtiyacına göre filtrele, sana uygun seçimi yap.</p><Link href="/markalar">Markaları keşfet →</Link></div>
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-4 gap-3">
+        <div className="theme-toolbar flex items-center justify-between mb-4 gap-3">
           <p className="text-sm text-text-secondary">
             {products.length > 0
               ? `${products.length} ürün görüntüleniyor`
@@ -380,13 +381,13 @@ export default function ProductListing({
         </div>
 
         {/* Grid */}
-        <div className="bg-white/60 border border-border rounded-3xl p-4 md:p-6">
+        <div className="theme-listing-products">
           {products.length === 0 && !loading ? (
             <div className="py-16 text-center text-text-secondary">
               Bu kriterlere uygun ürün bulunamadı.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="catalog-product-grid">
               {products.map((p, i) => (
                 <ProductCard key={`${p.id}-${i}`} product={p} index={i} variant="vertical" />
               ))}

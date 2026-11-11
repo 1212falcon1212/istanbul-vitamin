@@ -39,9 +39,9 @@ export default function SimilarProducts({ products }: SimilarProductsProps) {
   if (products.length === 0) return null;
 
   return (
-    <div className="bg-white border border-border rounded-3xl p-5 md:p-6">
+    <div className="pdp-similar">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl md:text-2xl text-text-primary">
+        <h2 className="pdp-related-title">
           Benzer Ürünler
         </h2>
         <div className="flex gap-2">
@@ -82,12 +82,12 @@ export default function SimilarProducts({ products }: SimilarProductsProps) {
         </div>
       </div>
 
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex gap-4">
+      <div className="pdp-related-viewport" ref={emblaRef}>
+        <div className="pdp-related-track">
           {products.map((p, i) => (
             <div
               key={p.id}
-              className="flex-none basis-full sm:basis-1/2 lg:basis-1/3 min-w-0"
+              className="pdp-related-slide"
             >
               <ProductCard product={p} index={i} variant="vertical" />
             </div>

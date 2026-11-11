@@ -16,6 +16,7 @@ interface BannersResponse { banners: Banner[] }
 export interface HomepageData {
   categories: Category[];
   trending: Product[];
+  bestSellers: Product[];
   recommended: Product[];
   spotlight: BrandSpotlightData | null;
   concerns: ConcernItem[];
@@ -28,9 +29,9 @@ export interface HomepageData {
 // Fetcher
 // ----------------------------------------------------------------
 
-async function safeFetch<T>(url: string): Promise<T | null> {
+async function safeFetch<T>(url: string, fresh = false): Promise<T | null> {
   try {
-    const res = await fetch(url, { next: { revalidate: 300 } });
+    const res = await fetch(url, fresh ? { cache: "no-store" } : { next: { revalidate: 300 } });
     if (!res.ok) return null;
     const json = await res.json();
     return (json.data ?? json) as T;
@@ -47,36 +48,42 @@ export async function fetchHomepageData(): Promise<HomepageData> {
   const [categories, trendingRaw, recommendedRaw, spotlightRaw, concernsRaw,
          newArrivalsRaw, brandsRaw, bannersRaw] = await Promise.all([
     safeFetch<CategoriesResponse>(`${API}/categories/tree`),
-    safeFetch<ProductsResponse>(`${API}/products?sort=trending&per_page=18`),
-    safeFetch<ProductsResponse>(`${API}/products?sort=featured&per_page=9`),
+    safeFetch<ProductsResponse>(`${API}/products?sort=trending&per_page=30`),
+    safeFetch<ProductsResponse>(`${API}/products?sort=featured&per_page=12`),
     safeFetch<BrandSpotlightData>(`${API}/brands/spotlight`),
     safeFetch<ConcernsResponse>(`${API}/skin-concerns`),
-    safeFetch<ProductsResponse>(`${API}/products?sort=newest&per_page=9`),
+    safeFetch<ProductsResponse>(`${API}/products?sort=newest&per_page=12`),
     safeFetch<Brand[]>(`${API}/brands?limit=15`),
-    safeFetch<BannersResponse>(`${API}/banners`),
+    safeFetch<BannersResponse>(`${API}/banners`, true),
   ]);
+
+  // The homepage brand section needs two full rows of five products.
+  const spotlightProducts = spotlightRaw?.brand.id
+    ? await safeFetch<ProductsResponse>(`${API}/products?brand_id=${spotlightRaw.brand.id}&sort=trending&per_page=12`)
+    : null;
 
   const trendingProducts = trendingRaw?.products ?? [];
   const recommendedProducts = recommendedRaw?.products ?? [];
 
-  // "Sizin için seçtiklerimiz" 9'a kadar — featured boşsa trending sonundan al
+  // "Sizin için seçtiklerimiz" 10'a kadar — featured boşsa trending sonundan al
   const recommended = (
     recommendedProducts.length > 0
       ? recommendedProducts
-      : trendingProducts.slice(-9)
-  ).slice(0, 9);
+      : trendingProducts.slice(-10)
+  ).slice(0, 12);
 
-  // Trending 9'a kadar — recommended ile çakışanları çıkar
+  // Trending 10'a kadar — recommended ile çakışanları çıkar
   const recommendedIds = new Set(recommended.map((p) => p.id));
   const trending = trendingProducts
     .filter((p) => !recommendedIds.has(p.id))
-    .slice(0, 9);
+    .slice(0, 12);
 
   return {
     categories:  categories?.categories ?? [],
     trending,
+    bestSellers: trendingProducts.filter((product) => product.sold_count > 0).slice(0, 12),
     recommended,
-    spotlight:   spotlightRaw ?? null,
+    spotlight:   spotlightRaw ? { ...spotlightRaw, products: spotlightProducts?.products ?? spotlightRaw.products } : null,
     concerns:    concernsRaw?.concerns ?? [],
     newArrivals: newArrivalsRaw?.products ?? [],
     brands:      Array.isArray(brandsRaw) ? brandsRaw : [],

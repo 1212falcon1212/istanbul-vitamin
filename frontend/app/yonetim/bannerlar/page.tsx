@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { api } from "@/lib/api";
 import { cn, resolveImageUrl } from "@/lib/utils";
+import { bannerPositions } from "@/lib/banner-slots";
 import type { Banner } from "@/types";
 
 const API_BASE_URL =
@@ -25,17 +25,19 @@ async function uploadBannerImage(file: File): Promise<string> {
   return json.data?.url ?? "";
 }
 
-const positions = [
-  { value: "hero", label: "Ana Slider (Üst, Büyük)" },
-  { value: "hero_tile", label: "Hero Altı 3'lü Tile" },
-  { value: "seasonal", label: "Sezon Banner (Büyük, Yatay)" },
-  { value: "mid", label: "Orta Banner (Çift)" },
-  { value: "footer", label: "Alt Banner (Büyük Final)" },
-];
+const positions = bannerPositions;
 
 const emptyBanner = {
   position: "hero",
   title: "",
+  subtitle: "",
+  button_text: "",
+  secondary_button_text: "",
+  secondary_link_url: "",
+  secondary_image_url: "",
+  secondary_image_alt: "",
+  background_color: "",
+  image_fit: "artwork",
   image_url: "",
   image_url_mobile: "",
   link_url: "",
@@ -46,7 +48,6 @@ const emptyBanner = {
 };
 
 export default function BannersPage() {
-  const router = useRouter();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -84,24 +85,35 @@ export default function BannersPage() {
     setForm({
       position: b.position,
       title: b.title ?? "",
+      subtitle: b.subtitle ?? "",
+      button_text: b.button_text ?? "",
+      secondary_button_text: b.secondary_button_text ?? "",
+      secondary_link_url: b.secondary_link_url ?? "",
+      secondary_image_url: b.secondary_image_url ?? "",
+      secondary_image_alt: b.secondary_image_alt ?? "",
+      background_color: b.background_color ?? "",
+      image_fit: b.image_fit ?? "",
       image_url: b.image_url,
       image_url_mobile: b.image_url_mobile ?? "",
       link_url: b.link_url ?? "",
       sort_order: b.sort_order,
       is_active: b.is_active,
-      starts_at: "",
-      expires_at: "",
+      starts_at: toLocalDateTime(b.starts_at),
+      expires_at: toLocalDateTime(b.expires_at),
     });
     setShowForm(true);
   }
 
   async function handleSave() {
+    setError("");
+    if (!form.image_url.trim()) { setError("Masaüstü görseli zorunludur."); return; }
     setSaving(true);
+    const payload = { ...form, starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : "", expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : "" };
     try {
       if (editingId) {
-        await api.put(`/admin/banners/${editingId}`, form);
+        await api.put(`/admin/banners/${editingId}`, payload);
       } else {
-        await api.post("/admin/banners", form);
+        await api.post("/admin/banners", payload);
       }
       setShowForm(false);
       fetchBanners();
@@ -146,6 +158,12 @@ export default function BannersPage() {
         </button>
       </div>
 
+      <p className="mb-6 rounded-lg bg-primary-soft p-4 text-sm text-text-primary">
+        Bannerlar konumlarına göre, sıralama değeri küçükten büyüğe gösterilir. Ana sliderdaki tüm aktif görseller kullanılabilir.
+        Hazır, yazılı bir banner yüklediğinizde başlık, açıklama ve buton yazısını boş bırakın; görsel yerleşimini “Tam banner” seçin.
+        Pasif veya tarih aralığı dışındaki bannerlar gösterilmez. Eski konumların kayıtları korunur.
+        Kaydettiğiniz değişiklikler ana sayfa yenilendiğinde görünür.
+      </p>
       {/* Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -153,6 +171,7 @@ export default function BannersPage() {
             <h2 className="font-display text-lg text-text-primary mb-4">
               {editingId ? "Banner Duzenle" : "Yeni Banner"}
             </h2>
+            {error && <p role="alert" className="mb-3 text-sm text-red-600">{error}</p>}
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-text-secondary mb-1">Pozisyon</label>
@@ -163,11 +182,42 @@ export default function BannersPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-text-secondary mb-1">Baslik</label>
-                <input className={inputCls} value={form.title} onChange={(e) => updateForm("title", e.target.value)} />
+                <label className="block text-xs text-text-secondary mb-1">{form.image_fit === "artwork" ? "Banner adı / erişilebilir açıklama (opsiyonel)" : "Başlık"}</label>
+                <textarea className={inputCls} value={form.title} maxLength={255} onChange={(e) => updateForm("title", e.target.value)} />
               </div>
+              {form.image_fit !== "artwork" && <>
+                <label className="block text-xs text-text-secondary">Açıklama
+                  <textarea className={inputCls} value={form.subtitle} maxLength={500} onChange={(e) => updateForm("subtitle", e.target.value)} />
+                </label>
+                <label className="block text-xs text-text-secondary">Buton yazısı
+                  <input className={inputCls} value={form.button_text} maxLength={100} onChange={(e) => updateForm("button_text", e.target.value)} placeholder="Ürünleri keşfet" />
+                </label>
+              </>}
+              {form.position === "hero" && form.image_fit !== "artwork" && <>
+                <ImageField label="Ayrı sağ ürün görseli (opsiyonel, tam banner için boş bırakın)" value={form.secondary_image_url} onChange={(v) => updateForm("secondary_image_url", v)} />
+                <label className="block text-xs text-text-secondary">Sağ görsel açıklaması
+                  <input className={inputCls} value={form.secondary_image_alt} onChange={(e) => updateForm("secondary_image_alt", e.target.value)} />
+                </label>
+                <label className="block text-xs text-text-secondary">İkinci buton yazısı (opsiyonel)
+                  <input className={inputCls} value={form.secondary_button_text} maxLength={100} onChange={(e) => updateForm("secondary_button_text", e.target.value)} />
+                </label>
+                <label className="block text-xs text-text-secondary">İkinci buton bağlantısı
+                  <input className={inputCls} value={form.secondary_link_url} onChange={(e) => updateForm("secondary_link_url", e.target.value)} />
+                </label>
+              </>}
+              {<div className="grid grid-cols-2 gap-3">
+                <label className="block text-xs text-text-secondary">Arka plan rengi
+                  <input type="color" className="block h-10 w-full" value={/^#[0-9a-f]{6}$/i.test(form.background_color) ? form.background_color : "#ede6ed"} onChange={(e) => updateForm("background_color", e.target.value)} />
+                </label>
+                <label className="block text-xs text-text-secondary">Görsel yerleşimi
+                  <select className={inputCls} value={form.image_fit || "cover"} onChange={(e) => updateForm("image_fit", e.target.value)}>
+                    <option value="artwork">Yazılı hazır banner (ek metin yok)</option><option value="cover">Tam banner (alanı doldur)</option><option value="contain">Ürün görseli + ayrı metin</option>
+                  </select>
+                </label>
+              </div>}
+              {form.image_fit === "artwork" && <p className="text-xs text-text-secondary">Yazılar görselin içindedir. Başlık, açıklama ve buton yazısı görselin üzerine eklenmez. Yalnızca görseli yükleyip bağlantıyı belirlemeniz yeterlidir.</p>}
               <ImageField
-                label="Görsel (Masaüstü)"
+                label={`Masaüstü görseli — ${positions.find(p => p.value === form.position)?.size || "900 × 460 px"}`}
                 value={form.image_url}
                 onChange={(v) => updateForm("image_url", v)}
               />
@@ -237,6 +287,7 @@ export default function BannersPage() {
               <h2 className="font-display text-lg text-text-primary mb-3">
                 {group.label}
               </h2>
+              <p className="mb-3 text-xs text-text-secondary">Önerilen: {group.size}{group.limit ? ` · En fazla ${group.limit} aktif banner` : ""}</p>
               {group.items.length === 0 ? (
                 <p className="text-sm text-text-secondary">Bu pozisyonda banner yok.</p>
               ) : (
@@ -278,6 +329,13 @@ export default function BannersPage() {
       )}
     </AdminShell>
   );
+}
+
+function toLocalDateTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
 function ImageField({
