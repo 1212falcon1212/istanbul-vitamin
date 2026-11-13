@@ -82,8 +82,9 @@ export default function ProductCard({ product, onAddToCart, onToggleFavorite, is
     setAdding(true);
     try {
       if (onAddToCart) { await onAddToCart(); return; }
-      const detail = await api.get<Product>(`/products/${product.slug}`);
-      if (detail.data?.variants?.some((variant) => variant.is_active)) { router.push(href); return; }
+      const detail = await api.get<Product | { product: Product }>(`/products/${product.slug}`);
+      const resolved = detail.data && "product" in detail.data ? detail.data.product : detail.data;
+      if (resolved?.variants?.some((variant) => variant.is_active)) { router.push(href); return; }
       await addItem(product.id, 1);
       open();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Ürün sepete eklenemedi"); }

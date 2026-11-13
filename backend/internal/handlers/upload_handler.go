@@ -36,7 +36,6 @@ var allowedImageExt = map[string]struct{}{
 	".png":  {},
 	".webp": {},
 	".gif":  {},
-	".svg":  {},
 }
 
 // maxUploadBytes yüklenebilir dosya boyutu limiti (10 MB).
@@ -59,7 +58,19 @@ func (h *UploadHandler) UploadImage(c *fiber.Ctx) error {
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if _, ok := allowedImageExt[ext]; !ok {
-		return utils.BadRequest(c, "Yalnızca görsel dosyaları yüklenebilir (jpg, png, webp, gif, svg)")
+		return utils.BadRequest(c, "Yalnızca görsel dosyaları yüklenebilir (jpg, png, webp, gif)")
+	}
+
+	// Validate content, not only extension; reject image bombs before decoding.
+	src, openErr := file.Open()
+	if openErr != nil {
+		return utils.BadRequest(c, "Dosya okunamadı")
+	}
+	imageConfig, format, decodeErr := image.DecodeConfig(src)
+	src.Close()
+	expected := map[string]string{".jpg": "jpeg", ".jpeg": "jpeg", ".png": "png", ".gif": "gif", ".webp": "webp"}
+	if decodeErr != nil || expected[ext] != format || imageConfig.Width <= 0 || imageConfig.Height <= 0 || int64(imageConfig.Width)*int64(imageConfig.Height) > 40000000 {
+		return utils.BadRequest(c, "Geçerli, en fazla 40 megapiksel bir görsel yükleyin")
 	}
 
 	// Tarih bazlı alt klasör (uploads/2026/04/) + rastgele dosya adı

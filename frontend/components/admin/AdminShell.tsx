@@ -57,6 +57,8 @@ const navEntries: NavEntry[] = [
     icon: DesignIcon,
     items: [
       { href: "/yonetim/sayfalar", label: "Sayfalar" },
+      { href: "/yonetim/anasayfa", label: "Ana Sayfa İçerikleri" },
+      { href: "/yonetim/bildirimler", label: "Firebase Bildirimleri" },
       { href: "/yonetim/bannerlar", label: "Banner'lar" },
     ],
   },

@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/istanbulvitamin/backend/internal/config"
@@ -24,7 +25,7 @@ func ConnectMySQL(cfg *config.Config) *gorm.DB {
 	}
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logLevel),
+		Logger: logger.New(log.New(os.Stdout, "", log.LstdFlags), logger.Config{LogLevel: logLevel, ParameterizedQueries: true, SlowThreshold: 200 * time.Millisecond}),
 	})
 	if err != nil {
 		log.Fatalf("MySQL bağlantı hatası: %v", err)

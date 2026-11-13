@@ -28,6 +28,9 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- Migration 006 only creates cargo_tracking_number; tracking_number was
+-- previously supplied by development AutoMigrate, but is also needed here.
+CALL aras_add_orders_column('tracking_number', '`tracking_number` VARCHAR(100) NULL');
 CALL aras_add_orders_column('aras_integration_code',  '`aras_integration_code` VARCHAR(32) NULL AFTER `tracking_number`');
 CALL aras_add_orders_column('aras_status_code',       '`aras_status_code` TINYINT NULL AFTER `delivered_at`');
 CALL aras_add_orders_column('aras_status_text',       '`aras_status_text` VARCHAR(64) NULL AFTER `aras_status_code`');

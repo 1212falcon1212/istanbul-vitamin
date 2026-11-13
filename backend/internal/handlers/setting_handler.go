@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,7 +45,7 @@ func (h *SettingHandler) GetAll(c *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(c, fiber.Map{
-		"settings": settings,
+		"settings": publicSettings(settings),
 	})
 }
 
@@ -83,6 +84,10 @@ func (h *SettingHandler) Update(c *fiber.Ctx) error {
 		key := strings.TrimSpace(item.Key)
 		if key == "" {
 			continue
+		}
+
+		if key == "homepage_content" && item.Value != "" && (len(item.Value) > 65536 || !json.Valid([]byte(item.Value))) {
+			return utils.BadRequest(c, "Ana sayfa içeriği geçerli JSON olmalı ve 64 KB sınırını aşmamalı")
 		}
 
 		group := strings.TrimSpace(item.Group)
@@ -169,4 +174,29 @@ func describeTestResult(ok bool, errMsg string) string {
 		return "Bağlantı kuruldu; Bizimhesap validasyon mesajı: " + errMsg
 	}
 	return "Bağlantı reddedildi: " + errMsg
+}
+
+// Public settings are explicitly allowlisted; new integration keys stay private.
+func publicSettings(all map[string]string) map[string]string {
+	out := map[string]string{}
+	for _, key := range strings.Fields("homepage_content top_header_mode top_header_image top_header_image_mobile top_header_image_alt site_name site_description site_logo_url site_logo_url_dark site_favicon_url top_header_enabled top_header_text top_header_link phone email address city town whatsapp_number instagram facebook twitter youtube meta_title meta_description shipping_fee free_shipping_threshold min_free_shipping google_analytics_id google_ads_id google_ads_conversion_label google_tracking_enabled") {
+		if value, ok := all[key]; ok {
+			out[key] = value
+		}
+	}
+	return out
+}
+func (h *SettingHandler) AdminGetAll(c *fiber.Ctx) error {
+	all, err := h.service.GetAll()
+	if err != nil {
+		return utils.InternalError(c)
+	}
+	out := map[string]string{}
+	for key, value := range all {
+		if services.IsSecretSetting(key) && value != "" {
+			value = "********"
+		}
+		out[key] = value
+	}
+	return utils.SuccessResponse(c, fiber.Map{"settings": out})
 }

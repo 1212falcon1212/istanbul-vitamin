@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/istanbulvitamin/backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AuthService struct {
@@ -54,23 +54,19 @@ func (s *AuthService) Register(email, password, firstName, lastName, phone strin
 		IsActive:     true,
 	}
 
-	if err := s.db.Create(user).Error; err != nil {
-		return nil, errors.New("kullanıcı oluşturulurken bir hata oluştu")
-	}
-
-	// Hos geldin e-postasi (async, opsiyonel — SMTP yoksa sessizce gecer)
-	if s.cfg.SMTPHost != "" {
-		mailer := integrations.NewMailer(s.cfg)
-		subject, htmlBody := integrations.WelcomeEmail(user.FirstName)
-		mailer.SendAsync(user.Email, subject, htmlBody)
-	}
-
-	// E-posta doğrulama linki (async; hata ana akışı bozmaz)
-	go func() {
-		if err := s.RequestEmailVerification(user); err != nil {
-			log.Printf("[email-verify] request failed for %s: %v", user.Email, err)
+	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
 		}
-	}()
+		transactional := NewAuthService(tx, s.cfg)
+		subject, body := integrations.WelcomeEmail(user.FirstName)
+		if err := transactional.queueAuthMail(user.Email, subject, body); err != nil {
+			return err
+		}
+		return transactional.RequestEmailVerification(user)
+	}); err != nil {
+		return nil, errors.New("Kullanıcı ve doğrulama e-postası kaydedilemedi")
+	}
 
 	return user, nil
 }
@@ -223,18 +219,16 @@ func (s *AuthService) RequestPasswordReset(email string) error {
 		return err
 	}
 
-	// Dev: token'ı log'a yaz (mail servisi yok). Prod'da buradan e-posta gönder.
+	// Token yalnız e-posta içeriğinde saklanır; loglara yazılmaz.
 	resetURL := fmt.Sprintf("%s/sifremi-sifirla?token=%s",
 		strings.TrimRight(s.cfg.SiteURL, "/"), token)
-	log.Printf("[password-reset] user=%s url=%s", user.Email, resetURL)
 
-	// SMTP konfigureyse gercek e-posta gonder (async)
-	if s.cfg.SMTPHost != "" {
-		mailer := integrations.NewMailer(s.cfg)
+	// SMTP hazır olunca dayanıklı kuyruk üzerinden gönderilir.
+	{
+
 		subject, htmlBody := integrations.PasswordResetEmail(resetURL)
-		mailer.SendAsync(user.Email, subject, htmlBody)
+		return s.queueAuthMail(user.Email, subject, htmlBody)
 	}
-	return nil
 }
 
 // ResetPassword token doğrular ve yeni şifreyi yazar.
@@ -301,14 +295,12 @@ func (s *AuthService) RequestEmailVerification(user *models.User) error {
 
 	verifyURL := fmt.Sprintf("%s/e-posta-dogrula?token=%s",
 		strings.TrimRight(s.cfg.SiteURL, "/"), token)
-	log.Printf("[email-verify] user=%s url=%s", user.Email, verifyURL)
 
-	if s.cfg.SMTPHost != "" {
-		mailer := integrations.NewMailer(s.cfg)
+	{
+
 		subject, htmlBody := integrations.VerifyEmail(verifyURL)
-		mailer.SendAsync(user.Email, subject, htmlBody)
+		return s.queueAuthMail(user.Email, subject, htmlBody)
 	}
-	return nil
 }
 
 // VerifyEmail verify token doğrulaması; başarılıysa user.email_verified_at = now.
@@ -336,4 +328,13 @@ func (s *AuthService) VerifyEmail(token string) error {
 		}
 		return tx.Model(&rec).Update("verified_at", now).Error
 	})
+}
+
+func (s *AuthService) queueAuthMail(recipient, subject, body string) error {
+	key := sha256.Sum256([]byte(recipient + subject + body))
+	expiry := time.Now().Add(24 * time.Hour)
+	if strings.Contains(body, "sifremi-sifirla") {
+		expiry = time.Now().Add(time.Hour)
+	}
+	return s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.NotificationDelivery{Key: fmt.Sprintf("auth:%x", key), ExpiresAt: &expiry, Channel: "email", Recipient: recipient, Title: subject, Body: body, Status: "pending", AvailableAt: time.Now()}).Error
 }

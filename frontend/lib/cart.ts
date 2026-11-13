@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import React from "react";
+import { trackCommerce } from "@/lib/marketing";
 import type { Cart, CartItem } from "@/types";
 
 const API_BASE_URL =
@@ -124,11 +125,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async (productId: number, quantity: number, variantId?: number) => {
       setIsLoading(true);
       try {
-        await cartRequest("/cart/items", "POST", {
+        const added = await cartRequest<{data:{cart:Cart}}>("/cart/items", "POST", {
           product_id: productId,
           quantity,
           variant_id: variantId,
         });
+        const item = added.data?.cart?.items?.find(i => i.product_id === productId && (i.variant_id ?? undefined) === variantId);
+        if (item) trackCommerce("add_to_cart", [{item_id:String(productId),price:item.variant?.price ?? item.product?.price ?? 0,quantity}]);
         await fetchCart();
       } finally {
         setIsLoading(false);

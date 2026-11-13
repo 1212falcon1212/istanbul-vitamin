@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { trackCommerce } from "@/lib/marketing";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -94,6 +95,9 @@ export default function OdemePage() {
     () => shippingMethods.find((s) => s.id === selectedShipping)?.price ?? 0,
     [selectedShipping, shippingMethods]
   );
+
+  const trackedCheckout = useRef(false);
+  useEffect(() => { if (isAuthenticated && items.length && !trackedCheckout.current) { trackedCheckout.current=true; trackCommerce("begin_checkout", items.map(i=>({item_id:String(i.product_id),price:i.variant?.price ?? i.product?.price ?? 0,quantity:i.quantity}))); } }, [isAuthenticated,items]);
 
   const total = Math.max(0, subtotal - couponDiscount) + shippingCost;
 

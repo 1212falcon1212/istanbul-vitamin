@@ -123,9 +123,9 @@ export default function HesabimLayout({
     return pathname.startsWith(href);
   }
 
-  function handleLogout() {
-    logout();
-    router.replace("/");
+  async function handleLogout() {
+    try { await logout(); router.replace("/"); }
+    catch { window.alert("Çıkış yapılamadı. Bağlantınızı kontrol edip tekrar deneyin."); }
   }
 
   return (

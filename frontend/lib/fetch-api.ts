@@ -14,7 +14,7 @@ export async function fetchAPI<T>(
 ): Promise<T | null> {
   try {
     const res = await fetch(`${API_URL}${endpoint}`, {
-      next: { revalidate: options?.revalidate ?? 60 },
+      ...(options?.revalidate ? { next: { revalidate: options.revalidate } } : { cache: "no-store" as const }),
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -43,7 +43,7 @@ export async function fetchPaginatedAPI<T>(
 ): Promise<{ data: T[]; pagination: { page: number; per_page: number; total: number; total_pages: number } } | null> {
   try {
     const res = await fetch(`${API_URL}${endpoint}`, {
-      next: { revalidate: options?.revalidate ?? 60 },
+      ...(options?.revalidate ? { next: { revalidate: options.revalidate } } : { cache: "no-store" as const }),
     });
     if (!res.ok) return null;
     const json = await res.json();

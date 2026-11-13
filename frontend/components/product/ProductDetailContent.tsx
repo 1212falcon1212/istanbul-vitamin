@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { trackCommerce } from "@/lib/marketing";
 import type { Product } from "@/types";
 import { calcDiscount } from "@/lib/utils";
 import ProductGallery from "./ProductGallery";
@@ -7,6 +8,7 @@ import ProductInfoBound from "./ProductInfoBound";
 import ProductDetailsTabs, { type ProductTab } from "./ProductDetailsTabs";
 
 export default function ProductDetailContent({ product }: { product: Product }) {
+  useEffect(() => { trackCommerce("view_item", [{item_id:String(product.id),price:product.price,quantity:1}]); }, [product.id, product.price]);
   const [tab, setTab] = useState<ProductTab>("description");
   function showTab(next: ProductTab) {
     setTab(next);

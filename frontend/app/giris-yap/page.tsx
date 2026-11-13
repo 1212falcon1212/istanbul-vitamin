@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { safeAuthRedirect } from "@/lib/auth-redirect";
 import { useAuth } from "@/lib/auth";
 import AuthShell from "@/components/auth/AuthShell";
 import Spinner from "@/components/ui/Spinner";
@@ -13,7 +14,7 @@ interface GirisYapPageProps {
 
 export default function GirisYapPage({ searchParams }: GirisYapPageProps) {
   const sp = use(searchParams);
-  const redirect = typeof sp.redirect === "string" ? sp.redirect : "/hesabim";
+  const redirect = safeAuthRedirect(sp.redirect);
 
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();

@@ -1,5 +1,6 @@
 "use client";
 
+import { useHomeContent } from "@/lib/use-home-content";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +14,7 @@ interface ApiResponse {
 }
 
 export default function FooterNewsletter() {
+  const c = useHomeContent().footer;
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,7 +35,9 @@ export default function FooterNewsletter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),
       });
-      const data: ApiResponse = await res.json().catch(() => ({ success: false }));
+      const data: ApiResponse = await res
+        .json()
+        .catch(() => ({ success: false }));
 
       if (!res.ok || !data.success) {
         toast.error(data.error || "Abonelik başarısız. Lütfen tekrar deneyin.");
@@ -51,11 +55,9 @@ export default function FooterNewsletter() {
   return (
     <div className="theme-newsletter">
       <h3 className="font-display text-xl text-[#111827] mb-3 font-bold">
-        Bültene Katıl
+        {c.newsletterTitle}
       </h3>
-      <p className="text-sm text-[#6b7280] mb-3">
-        Yeni ürünler ve özel kampanyalardan ilk siz haberdar olun.
-      </p>
+      <p className="text-sm text-[#6b7280] mb-3">{c.newsletterDescription}</p>
       <form
         onSubmit={handleSubmit}
         noValidate
@@ -80,7 +82,7 @@ export default function FooterNewsletter() {
           disabled={submitting}
           className="bg-primary text-white text-sm font-semibold rounded px-4 py-2 hover:bg-primary/90 transition disabled:opacity-60"
         >
-          {submitting ? "Gönderiliyor..." : "Abone Ol"}
+          {submitting ? "Gönderiliyor..." : c.newsletterButton}
         </button>
       </form>
     </div>

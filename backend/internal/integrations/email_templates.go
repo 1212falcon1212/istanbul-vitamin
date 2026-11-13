@@ -10,70 +10,42 @@ import (
 const brandPrimary = "#7c3aed"
 
 // baseLayout tek bir HTML iskeleti uretir. innerHTML body icerigidir.
+// Public HTTPS logo already used by the storefront. Never use a localhost asset in email.
+const emailLogoURL = "https://istanbulvitamin.com/uploads/2026/04/1776618321883813252-61e5397263e2a0f0.png"
+
 func baseLayout(title, innerHTML string) string {
-	safeTitle := html.EscapeString(title)
-	var b strings.Builder
-	b.WriteString(`<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>`)
-	b.WriteString(safeTitle)
-	b.WriteString(`</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f7;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.04);">
-          <tr>
-            <td style="background:`)
-	b.WriteString(brandPrimary)
-	b.WriteString(`;padding:24px 32px;text-align:left;">
-              <div style="display:inline-block;background:#ffffff;color:`)
-	b.WriteString(brandPrimary)
-	b.WriteString(`;font-weight:700;font-size:18px;padding:8px 14px;border-radius:8px;letter-spacing:0.3px;">İstanbul Vitamin</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:32px;font-size:15px;line-height:1.6;color:#1f2937;">`)
-	b.WriteString(innerHTML)
-	b.WriteString(`            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 32px;background:#fafafa;color:#6b7280;font-size:12px;text-align:center;border-top:1px solid #eeeeee;">
-              Bu e-posta size İstanbul Vitamin tarafindan otomatik gonderilmistir.<br>
-              &copy; İstanbul Vitamin
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`)
-	return b.String()
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="color-scheme" content="light"><title>%s</title>
+<style>@media only screen and (max-width:620px){.outer{padding:20px 10px!important}.content{padding:28px 22px!important}.brand{padding:24px 18px!important}.heading{font-size:27px!important}.summary-cell{display:block!important;width:auto!important;padding:16px 20px!important}.mail-logo{width:260px!important;height:auto!important}}</style></head>
+<body style="margin:0;padding:0;background:#f5f3f8;color:#1f1b16;font-family:Inter,Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%%">
+<div style="display:none;font-size:1px;color:#f5f3f8;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">%s — İstanbul Vitamin</div>
+<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f3f8"><tr><td class="outer" align="center" style="padding:40px 16px">
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border:1px solid #e8e2ee;border-radius:16px;overflow:hidden">
+<tr><td height="5" style="height:5px;background:#7c3aed;font-size:0;line-height:0">&nbsp;</td></tr>
+<tr><td class="brand" align="center" style="padding:30px 32px 24px;background:#ffffff;border-bottom:1px solid #eee9f3"><a href="https://istanbulvitamin.com" style="text-decoration:none"><img class="mail-logo" src="%s" width="300" alt="İstanbul Vitamin" border="0" style="display:block;width:300px;max-width:100%%;height:auto;color:#1f1b16;font-size:20px"></a><p style="margin:10px 0 0;color:#796d86;font-size:12px;line-height:18px;letter-spacing:1px">BAKIMINA İYİ GELEN SEÇİMLER</p></td></tr>
+<tr><td class="content" style="padding:36px 36px 32px;font-size:15px;line-height:25px;color:#51465d">%s</td></tr>
+<tr><td style="padding:22px 26px;background:#faf8fd;border-top:1px solid #eee9f3;text-align:center"><p style="margin:0 0 7px;font-size:14px;font-weight:bold;color:#362047">Bir sorunuz mu var?</p><a href="mailto:info@istanbulvitamin.com" style="color:#6d28d9;font-size:13px;text-decoration:none">info@istanbulvitamin.com</a></td></tr>
+</table>
+<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px"><tr><td align="center" style="padding:24px 20px;color:#8a8093;font-size:11px;line-height:19px"><a href="https://istanbulvitamin.com" style="color:#71627f;text-decoration:none;font-weight:bold">istanbulvitamin.com</a><br>Bu e-posta size İstanbul Vitamin tarafından otomatik gönderilmiştir.<br>&copy; İstanbul Vitamin</td></tr></table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table></body></html>`, html.EscapeString(title), html.EscapeString(title), html.EscapeString(emailLogoURL), innerHTML)
 }
 
-// button primary renkte buton HTML'i doner.
 func button(url, label string) string {
-	return fmt.Sprintf(
-		`<p style="text-align:center;margin:28px 0;"><a href="%s" style="display:inline-block;background:%s;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px;">%s</a></p>`,
-		html.EscapeString(url), brandPrimary, html.EscapeString(label),
-	)
+	return fmt.Sprintf(`<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px"><tr><td align="center" bgcolor="#7c3aed" style="border-radius:8px;mso-padding-alt:15px 26px"><a href="%s" style="display:inline-block;padding:15px 26px;border:1px solid #7c3aed;border-radius:8px;color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:bold;text-decoration:none">%s &nbsp; &#8594;</a></td></tr></table>`, html.EscapeString(url), html.EscapeString(label))
 }
 
 // PasswordResetEmail sifre sifirlama e-postasi icin subject + HTML body doner.
 func PasswordResetEmail(resetURL string) (string, string) {
-	subject := "Sifre Sifirlama — İstanbul Vitamin"
+	subject := "Şifre Sıfırlama — İstanbul Vitamin"
 	inner := `
-              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Sifrenizi sifirlayin</h1>
-              <p style="margin:0 0 16px;">Hesabiniz icin sifre sifirlama talebi aldik. Asagidaki butona tiklayarak yeni sifrenizi olusturabilirsiniz.</p>` +
-		button(resetURL, "Sifremi Sifirla") +
-		`<p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Bu baglanti 60 dakika boyunca gecerlidir.</p>
-              <p style="margin:0;color:#6b7280;font-size:13px;">Eger bu istegi siz yapmadiysaniz, bu e-postayi goz ardi edebilirsiniz.</p>
-              <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Buton calismazsa: ` +
+              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Şifrenizi sıfırlayın</h1>
+              <p style="margin:0 0 16px;">Hesabınız için şifre sıfırlama talebi aldık. Aşağıdaki butona tıklayarak yeni şifrenizi oluşturabilirsiniz.</p>` +
+		button(resetURL, "Şifremi Sıfırla") +
+		`<p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Bu bağlantı 60 dakika boyunca geçerlidir.</p>
+              <p style="margin:0;color:#6b7280;font-size:13px;">Bu isteği siz yapmadıysanız bu e-postayı göz ardı edebilirsiniz.</p>
+              <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Buton çalışmazsa: ` +
 		html.EscapeString(resetURL) + `</p>`
 	return subject, baseLayout(subject, inner)
 }
@@ -106,15 +78,15 @@ func WelcomeEmail(firstName string) (string, string) {
 	if name == "" {
 		name = "hos geldin"
 	}
-	subject := fmt.Sprintf("Aramiza hos geldin, %s!", name)
+	subject := fmt.Sprintf("Aramıza hoş geldin, %s!", name)
 	inner := fmt.Sprintf(`
-              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Aramiza hos geldin, %s!</h1>
-              <p style="margin:0 0 16px;">İstanbul Vitamin ailesine katildigin icin tesekkur ederiz. Artik binlerce urune hizli ve guvenli sekilde ulasabilirsin.</p>
-              <p style="margin:0 0 8px;">Senin icin hazirladiklarimiz:</p>
+              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">Aramıza hoş geldin, %s!</h1>
+              <p style="margin:0 0 16px;">İstanbul Vitamin ailesine katıldığınız için teşekkür ederiz. Ürünleri keşfedebilir, siparişlerinizi hesabınızdan takip edebilirsiniz.</p>
+              <p style="margin:0 0 8px;">Hesabınızdan yapabilecekleriniz:</p>
               <ul style="margin:0 0 16px 18px;padding:0;color:#374151;">
-                <li>Ozel kampanya ve firsatlar</li>
-                <li>Hizli teslimat ve guvenli odeme</li>
-                <li>Kisiye ozel urun onerileri</li>
+                <li>Güncel kampanyaları inceleme</li>
+                <li>Sipariş durumunu takip etme</li>
+                <li>Favori ürünlerinizi kaydetme</li>
               </ul>`,
 		html.EscapeString(name),
 	)
@@ -123,13 +95,13 @@ func WelcomeEmail(firstName string) (string, string) {
 
 // VerifyEmail e-posta dogrulama icin subject + HTML body doner.
 func VerifyEmail(verifyURL string) (string, string) {
-	subject := "E-posta adresini dogrula"
+	subject := "E-posta adresinizi doğrulayın"
 	inner := `
-              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">E-posta adresini dogrula</h1>
-              <p style="margin:0 0 16px;">Hesabini aktiflestirmek icin asagidaki butona tiklayarak e-posta adresini dogrulayabilirsin.</p>` +
-		button(verifyURL, "E-postami Dogrula") +
-		`<p style="margin:0;color:#6b7280;font-size:13px;">Eger bu hesabi siz olusturmadiysaniz, bu e-postayi goz ardi edebilirsiniz.</p>
-              <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Buton calismazsa: ` +
+              <h1 style="margin:0 0 16px;font-size:22px;color:#111827;">E-posta adresinizi doğrulayın</h1>
+              <p style="margin:0 0 16px;">E-posta adresinizi doğrulamak için aşağıdaki butona tıklayın. Bu bağlantı 24 saat geçerlidir.</p>` +
+		button(verifyURL, "E-postamı doğrula") +
+		`<p style="margin:0;color:#6b7280;font-size:13px;">Bu hesabı siz oluşturmadıysanız bu e-postayı göz ardı edebilirsiniz.</p>
+              <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Buton çalışmazsa: ` +
 		html.EscapeString(verifyURL) + `</p>`
 	return subject, baseLayout(subject, inner)
 }

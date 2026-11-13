@@ -6,9 +6,11 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
-import { api } from "./api";
+import { detachPush, syncPushAccount } from "./push";
+import { api, APIError } from "./api";
 import type { User, Admin, AuthResponse } from "@/types";
 import React from "react";
 
@@ -72,24 +74,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const sessionVersion = useRef(0);
   const loadSessions = useCallback(async () => {
-    const userToken = localStorage.getItem(USER_TOKEN);
+    const version = ++sessionVersion.current;
     const adminToken = localStorage.getItem(ADMIN_TOKEN);
 
     // User ve admin oturumları birbirinden bağımsız — paralel yükle.
     const tasks: Promise<void>[] = [];
 
-    if (userToken) {
+    { // Recover customer sessions from HttpOnly cookies as well.
       tasks.push(
         (async () => {
           try {
             const res = await api.get<{ user: User } | User>("/users/me");
             const raw = res.data as { user?: User } | User | undefined;
             const u = raw && "user" in raw ? raw.user : (raw as User | undefined);
-            if (u) setUser(u);
-          } catch {
-            localStorage.removeItem(USER_TOKEN);
-            localStorage.removeItem(USER_ROLE);
+            if (u && version === sessionVersion.current) setUser(u);
+          } catch (err) {
+            if (version === sessionVersion.current && err instanceof APIError && [401,403].includes(err.status)) {
+              localStorage.removeItem(USER_TOKEN);
+              localStorage.removeItem(USER_ROLE);
+              setUser(null);
+            }
           }
         })()
       );
@@ -102,10 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const res = await api.get<{ user: Admin } | Admin>("/admin/users/me");
             const raw = res.data as { user?: Admin } | Admin | undefined;
             const a = raw && "user" in raw ? raw.user : (raw as Admin | undefined);
-            if (a) setAdmin(a);
-          } catch {
-            localStorage.removeItem(ADMIN_TOKEN);
-            localStorage.removeItem(ADMIN_ROLE);
+            if (a && version === sessionVersion.current) setAdmin(a);
+          } catch (err) {
+            if (version === sessionVersion.current && err instanceof APIError && [401,403].includes(err.status)) {
+              localStorage.removeItem(ADMIN_TOKEN);
+              localStorage.removeItem(ADMIN_ROLE);
+              setAdmin(null);
+            }
           }
         })()
       );
@@ -117,6 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadSessions();
+    const sync = (event: StorageEvent) => {
+      if (event.key === null || [USER_TOKEN, ADMIN_TOKEN].includes(event.key)) loadSessions();
+    };
+    window.addEventListener("storage", sync);
+    return () => { ++sessionVersion.current; window.removeEventListener("storage", sync); };
   }, [loadSessions]);
 
   const login = async (email: string, password: string) => {
@@ -125,10 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
     if (res.data) {
+      ++sessionVersion.current;
       localStorage.setItem(USER_TOKEN, res.data.token);
       localStorage.setItem(USER_ROLE, "user");
       if (res.data.user) setUser(res.data.user);
       await mergeGuestCart();
+      await syncPushAccount().catch(() => {});
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth-changed"));
       }
@@ -141,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
     if (res.data) {
+      ++sessionVersion.current;
       localStorage.setItem(ADMIN_TOKEN, res.data.token);
       localStorage.setItem(ADMIN_ROLE, res.data.admin?.role || "admin");
       if (res.data.admin) setAdmin(res.data.admin);
@@ -150,10 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     const res = await api.post<AuthResponse>("/auth/register", data);
     if (res.data) {
+      ++sessionVersion.current;
       localStorage.setItem(USER_TOKEN, res.data.token);
       localStorage.setItem(USER_ROLE, "user");
       if (res.data.user) setUser(res.data.user);
       await mergeGuestCart();
+      await syncPushAccount().catch(() => {});
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth-changed"));
       }
@@ -161,12 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      // Backend role'e göre doğru cookie'yi temizler — user cookie hedeflenir.
-      await api.post("/auth/logout");
-    } catch {
-      // ignore
-    }
+    await detachPush();
+    await api.post("/auth/logout");
+    ++sessionVersion.current;
     localStorage.removeItem(USER_TOKEN);
     localStorage.removeItem(USER_ROLE);
     setUser(null);
@@ -194,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         admin,
         isLoading,
-        isAuthenticated: !!user || !!admin,
+        isAuthenticated: !!user,
         isAdmin: !!admin,
         login,
         adminLogin,

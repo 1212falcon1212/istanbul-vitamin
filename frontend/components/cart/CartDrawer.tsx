@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/lib/cart";
@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 const FREE_SHIPPING_THRESHOLD = 500;
 
 export default function CartDrawer() {
+  const dialogRef = useRef<HTMLElement>(null);
   const { isOpen, close } = useCartDrawer();
   const { items, subtotal, itemCount, isLoading, updateItem, removeItem } =
     useCart();
@@ -32,11 +33,19 @@ export default function CartDrawer() {
 
   useEffect(() => {
     if (!isOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const focusable = () => Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),[tabindex="0"]') || []);
+    focusable()[0]?.focus();
     function h(e: KeyboardEvent) {
       if (e.key === "Escape") close();
+      if (e.key === "Tab") {
+        const nodes = focusable(), first = nodes[0], last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     }
     window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    return () => { window.removeEventListener("keydown", h); previous?.focus(); };
   }, [isOpen, close]);
 
   const remainingForFreeShipping = Math.max(
@@ -93,6 +102,9 @@ export default function CartDrawer() {
       />
 
       <aside
+        ref={dialogRef}
+        inert={!isOpen}
+        aria-modal={isOpen || undefined}
         className={cn(
           "fixed top-0 right-0 bottom-0 z-[70] w-full sm:max-w-[440px] bg-white shadow-2xl flex flex-col transition-transform duration-300",
           isOpen ? "translate-x-0" : "translate-x-full pointer-events-none"

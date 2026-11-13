@@ -4,6 +4,9 @@ import "gorm.io/gorm"
 
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&NotificationEvent{},
+		&NotificationDelivery{},
+		&PushSubscription{},
 		&User{},
 		&Admin{},
 		&Address{},

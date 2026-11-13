@@ -349,3 +349,29 @@ func normalizeShippingMethod(v string) string {
 		return "standard"
 	}
 }
+
+// PurchaseMeasurement returns only an owned order's paid, non-test measurement.
+func (h *OrderHandler) PurchaseMeasurement(c *fiber.Ctx) error {
+	userID, _ := c.Locals("userID").(uint64)
+	if userID == 0 {
+		return utils.Unauthorized(c)
+	}
+	number := c.Params("number")
+	if len(number) == 0 || len(number) > 20 {
+		return utils.BadRequest(c, "Geçersiz sipariş numarası")
+	}
+	var order models.Order
+	if err := database.DB.Where("order_number = ? AND user_id = ?", number, userID).Preload("Items").First(&order).Error; err != nil {
+		return utils.NotFound(c, "Sipariş")
+	}
+	if order.PaymentID == "" || strings.HasPrefix(order.PaymentID, "DEV-") || order.Status == "cancelled" || order.Status == "refunded" {
+		return utils.SuccessResponse(c, fiber.Map{"payment_status": "pending"})
+	}
+	items := []fiber.Map{}
+	for _, item := range order.Items {
+		if item.ProductID != nil {
+			items = append(items, fiber.Map{"item_id": strconv.FormatUint(*item.ProductID, 10), "price": item.UnitPrice, "quantity": item.Quantity})
+		}
+	}
+	return utils.SuccessResponse(c, fiber.Map{"id": order.OrderNumber, "payment_status": "paid", "total": order.Total, "items": items})
+}

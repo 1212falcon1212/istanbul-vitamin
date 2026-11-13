@@ -86,7 +86,7 @@ func (s *CartService) AddItem(cartID uint64, productID uint64, variantID *uint64
 			}
 			return errors.New("varyant kontrol edilirken bir hata oluştu")
 		}
-		if variant.ProductID != productID {
+		if variant.ProductID != productID || !variant.IsActive {
 			return errors.New("varyant bu ürüne ait değil")
 		}
 		availableStock = variant.Stock
@@ -104,6 +104,9 @@ func (s *CartService) AddItem(cartID uint64, productID uint64, variantID *uint64
 	err := itemQuery.First(&existingItem).Error
 	if err == nil {
 		// Mevcut ogeyi guncelle
+		if quantity > availableStock-existingItem.Quantity {
+			return errors.New("yetersiz stok")
+		}
 		newQuantity := existingItem.Quantity + quantity
 		if newQuantity > availableStock {
 			return errors.New("yetersiz stok")
@@ -111,6 +114,9 @@ func (s *CartService) AddItem(cartID uint64, productID uint64, variantID *uint64
 		return s.db.Model(&existingItem).Update("quantity", newQuantity).Error
 	}
 
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("sepet kontrol edilirken bir hata oluştu")
+	}
 	// Stok kontrolu
 	if quantity > availableStock {
 		return errors.New("yetersiz stok")
@@ -145,21 +151,21 @@ func (s *CartService) UpdateItem(itemID uint64, cartID uint64, quantity int) err
 		return errors.New("sepet ögesi getirilirken bir hata oluştu")
 	}
 
-	// Stok kontrolu
+	// Fail closed on removed/inactive products, variants and database failures.
+	var product models.Product
+	if err := s.db.First(&product, item.ProductID).Error; err != nil || !product.IsActive {
+		return errors.New("ürün satışa uygun değil")
+	}
+	availableStock := product.Stock
 	if item.VariantID != nil {
 		var variant models.ProductVariant
-		if err := s.db.First(&variant, *item.VariantID).Error; err == nil {
-			if quantity > variant.Stock {
-				return errors.New("yetersiz stok")
-			}
+		if err := s.db.First(&variant, *item.VariantID).Error; err != nil || variant.ProductID != item.ProductID || !variant.IsActive {
+			return errors.New("ürün varyantı satışa uygun değil")
 		}
-	} else {
-		var product models.Product
-		if err := s.db.First(&product, item.ProductID).Error; err == nil {
-			if quantity > product.Stock {
-				return errors.New("yetersiz stok")
-			}
-		}
+		availableStock = variant.Stock
+	}
+	if quantity > availableStock {
+		return errors.New("yetersiz stok")
 	}
 
 	if err := s.db.Model(&item).Update("quantity", quantity).Error; err != nil {

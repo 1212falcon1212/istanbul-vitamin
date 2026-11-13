@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 import { useCartDrawer } from "@/lib/cart-drawer";
+import {useHomeContent} from "@/lib/use-home-content";
+import {safeContentLink} from "@/lib/home-content";
 import { useSettings } from "@/lib/settings";
 import CategoryMenu from "./CategoryMenu";
 // Offline entry: icons are registered at build time in lib/iconify-bundle.ts
@@ -146,12 +148,13 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
   }
 
   // --- Settings (site adı, logo) ---
+  const home=useHomeContent();
   const { settings, isLoading: settingsLoading } = useSettings();
   const logoUrl = settings.site_logo_url
     ? resolveImageUrl(settings.site_logo_url)
     : "";
   const siteName = settings.site_name || "İstanbul Vitamin";
-  const announcementText = settings.top_header_text?.trim() || "Stoktaki ürünlerde aynı gün kargo • Bakımın için sevdiğin markalar bir arada";
+  const announcementText = settings.top_header_text?.trim() ?? "Stoktaki ürünlerde aynı gün kargo • Bakımın için sevdiğin markalar bir arada";
   const announcementHref = settings.top_header_link?.trim();
 
   // --- State ---
@@ -201,6 +204,23 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const focusable = () => Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled])') || []);
+    focusable()[0]?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === "Tab") {
+        const nodes=focusable(), first=nodes[0], last=nodes[nodes.length-1];
+        if(event.shiftKey && document.activeElement===first){event.preventDefault();last?.focus();}
+        else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first?.focus();}
+      }
+    };
+    window.addEventListener("keydown",handleKey);
+    return()=>{window.removeEventListener("keydown",handleKey);previous?.focus();};
+  },[mobileOpen]);
+
   // --- Search submit ---
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -224,8 +244,8 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
 
   return (
     <header className="shop-header w-full z-50 relative">
-      {showTopHeader && announcementText && <div className="theme-announcement" aria-label="Mağaza duyurusu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 6h11v11H3zM14 10h4l3 4v3h-7" strokeLinejoin="round"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>{announcementHref ? <Link href={announcementHref}>{announcementText}</Link> : announcementText}</div>}
-      <div className="theme-utilities theme-container"><div><Link href="/hakkimizda">Hakkımızda</Link><Link href="/hesabim">Hesabım</Link><Link href="/hesabim/favorilerim">Favorilerim</Link><span>Stoktaki ürünlerde <b>aynı gün kargo</b></span></div><Link href="/hesabim/siparisler">Sipariş Takibi</Link></div>
+      {showTopHeader && settings.top_header_mode === "image" && settings.top_header_image ? <Link className="top-strip-banner" href={safeContentLink(settings.top_header_link || "/")}><picture>{settings.top_header_image_mobile && <source media="(max-width:767px)" srcSet={resolveImageUrl(settings.top_header_image_mobile)}/>}<img src={resolveImageUrl(settings.top_header_image)} alt={settings.top_header_image_alt || "Mağaza duyurusu"} fetchPriority="high"/></picture></Link> : showTopHeader && announcementText && <div className="theme-announcement" aria-label="Mağaza duyurusu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 6h11v11H3zM14 10h4l3 4v3h-7" strokeLinejoin="round"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>{announcementHref ? <Link href={safeContentLink(announcementHref)}>{announcementText}</Link> : announcementText}</div>}
+      {home.header.utilitiesEnabled && <div className="theme-utilities theme-container"><div>{home.header.utilityLinks.map((link,i)=><Link key={i} href={safeContentLink(link.href)}>{link.label}</Link>)}<span>{home.header.utilityText}</span></div><Link href={safeContentLink(home.header.trackingHref)}>{home.header.trackingLabel}</Link></div>}
       {/* ======================== Main Bar ======================== */}
       <div
         className={cn(
@@ -370,12 +390,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
             {categoryOpen && <div id="header-category-menu" className="shop-category-dropdown" onKeyDown={e => { if (e.key === "Escape") setCategoryOpen(false); }}><CategoryMenu categories={categories} /></div>}
           </div>
           <div className="shop-nav-links">
-            <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Ana Sayfa</Link>
-            <Link href="/magaza">Tüm Ürünler</Link>
-            <Link href="/markalar">Markalar</Link>
-            <Link href="/cilt-bakimi">Cilt Bakımı</Link>
-            <Link href="/gunes-urunleri">Güneş Ürünleri</Link>
-            <Link href="/iletisim">İletişim</Link>
+            {home.header.menu.map((link,i)=><Link key={i} href={safeContentLink(link.href)} aria-current={pathname===link.href?"page":undefined}>{link.label}</Link>)}
           </div>
         </div>
       </nav>
@@ -392,6 +407,11 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
       {/* ======================== Mobile Drawer ======================== */}
       <div
         ref={drawerRef}
+        inert={!mobileOpen}
+        aria-hidden={!mobileOpen}
+        role="dialog"
+        aria-modal={mobileOpen || undefined}
+        aria-label="Mobil menü"
         className={cn(
           "fixed top-0 left-0 bottom-0 w-[85vw] max-w-[360px] bg-card-bg z-[70] lg:hidden",
           "transform transition-transform duration-300 ease-out",

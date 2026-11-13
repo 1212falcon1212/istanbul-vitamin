@@ -43,6 +43,9 @@ func OriginCheck(allowedOrigins []string) fiber.Handler {
 		// Header yoksa: non-browser client (curl, Postman, mobile) — bypass.
 		// Bu, SameSite=Lax cookie zaten tarayıcı CSRF'ini engellediği için güvenli.
 		if origin == "" {
+			if (c.Cookies("auth_token") != "" || c.Cookies("admin_token") != "") && !strings.HasPrefix(c.Get("Authorization"), "Bearer ") {
+				return fiber.NewError(fiber.StatusForbidden, "İstek kaynağı gerekli")
+			}
 			return c.Next()
 		}
 

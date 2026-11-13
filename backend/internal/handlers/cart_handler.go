@@ -68,7 +68,7 @@ func (h *CartHandler) AddItem(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Ürün ID zorunludur")
 	}
 	if req.Quantity <= 0 {
-		req.Quantity = 1
+		return utils.BadRequest(c, "Miktar sıfırdan büyük olmalıdır")
 	}
 
 	userID, _ := c.Locals("userID").(uint64)

@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS notification_events (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ `key` VARCHAR(190) NOT NULL UNIQUE, kind VARCHAR(60), order_id BIGINT UNSIGNED, reference_id BIGINT UNSIGNED,
+ expanded BOOLEAN DEFAULT FALSE, created_at DATETIME(3), INDEX(expanded)
+);
+CREATE TABLE IF NOT EXISTS notification_deliveries (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, `key` VARCHAR(190) NOT NULL UNIQUE,
+ event_id BIGINT UNSIGNED, channel VARCHAR(10), recipient VARCHAR(255), user_id BIGINT UNSIGNED,
+ marketing BOOLEAN DEFAULT FALSE, title VARCHAR(200), body LONGTEXT, path VARCHAR(500), status VARCHAR(20),
+ expires_at DATETIME(3) NULL, attempts BIGINT DEFAULT 0, available_at DATETIME(3), last_error VARCHAR(100), created_at DATETIME(3), updated_at DATETIME(3),
+ INDEX(event_id), INDEX(status), INDEX(available_at)
+);
+ALTER TABLE push_subscriptions ADD COLUMN account_expires_at DATETIME(3) NULL, ADD COLUMN user_id BIGINT UNSIGNED NULL, ADD COLUMN marketing BOOLEAN NOT NULL DEFAULT FALSE, ADD INDEX(user_id);

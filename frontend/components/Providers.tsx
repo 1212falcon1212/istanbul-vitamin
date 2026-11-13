@@ -11,12 +11,16 @@ import { CartDrawerProvider } from "@/lib/cart-drawer";
 import { FavoritesProvider } from "@/lib/favorites";
 import { SettingsProvider } from "@/lib/settings";
 import CartDrawer from "@/components/cart/CartDrawer";
+import Marketing from "@/components/Marketing";
+import PWA from "@/components/PWA";
 import FaviconInjector from "@/components/FaviconInjector";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <FaviconInjector />
+      <PWA />
+      <Marketing />
       <AuthProvider>
         <CartProvider>
           <FavoritesProvider>

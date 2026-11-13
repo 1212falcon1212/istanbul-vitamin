@@ -1,17 +1,33 @@
 {
   "name": "İstanbul Vitamin",
-  "short_name": "İstanbul Vitamin",
+  "short_name": "İst. Vitamin",
   "description": "Orijinal dermokozmetik ürünleri en uygun fiyatlarla",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f0ff",
+  "background_color": "#ffffff",
   "theme_color": "#7c3aed",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.png?v=8",
-      "sizes": "64x64",
-      "type": "image/png"
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/",
+  "scope": "/",
+  "lang": "tr"
 }

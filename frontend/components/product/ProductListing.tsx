@@ -59,7 +59,9 @@ export default function ProductListing({
 }: ProductListingProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [sort, setSort] = useState<SortOption>("newest");
 
@@ -90,19 +92,25 @@ export default function ProductListing({
   const activeCategoryId = locked.category_id ?? selectedCategory ?? undefined;
   useEffect(() => {
     if (!showBrandFilter) return;
-    const params = new URLSearchParams({ per_page: "200" });
-    if (activeCategoryId) params.set("category_id", String(activeCategoryId));
-    fetch(`${apiBase}/brands?${params.toString()}`)
-      .then((r) => r.json())
-      .then((j) => {
-        const data = Array.isArray(j.data) ? j.data : j.data?.brands ?? [];
-        setBrands(data);
-        // Seçili markalar artık mevcut listede yoksa temizle
-        setSelectedBrands((prev) =>
-          prev.filter((id) => (data as Brand[]).some((b) => b.id === id))
-        );
-      })
-      .catch(() => {});
+    const controller = new AbortController();
+    async function loadBrands() {
+      const all: Brand[] = [];
+      for (let page = 1; ; page++) {
+        const params = new URLSearchParams({ per_page: "500", page: String(page) });
+        if (activeCategoryId) params.set("category_id", String(activeCategoryId));
+        const res = await fetch(`${apiBase}/brands?${params}`, { signal: controller.signal });
+        if (!res.ok) throw new Error("Markalar yüklenemedi");
+        const json = await res.json();
+        const list: Brand[] = Array.isArray(json.data) ? json.data : json.data?.brands ?? [];
+        all.push(...list);
+        if (!list.length || page >= (json.pagination?.total_pages ?? 1)) break;
+      }
+      if (controller.signal.aborted) return;
+      setBrands(all);
+      setSelectedBrands(prev => prev.filter(id => all.some(b => b.id === id)));
+    }
+    loadBrands().catch(() => {});
+    return () => controller.abort();
   }, [apiBase, showBrandFilter, activeCategoryId]);
 
   useEffect(() => {
@@ -115,13 +123,6 @@ export default function ProductListing({
       })
       .catch(() => {});
   }, [apiBase, showCategoryFilter]);
-
-  // Reset on filter change
-  useEffect(() => {
-    setProducts([]);
-    setPage(1);
-    setHasMore(true);
-  }, [filterKey]);
 
   // Build query
   const buildUrl = useCallback(
@@ -136,7 +137,7 @@ export default function ProductListing({
       if (locked.campaign_id) params.set("campaign_id", String(locked.campaign_id));
 
       if (selectedBrands.length > 0 && !locked.brand_id) {
-        params.set("brand_id", String(selectedBrands[0]));
+        params.set("brand_ids", selectedBrands.join(","));
       }
       if (selectedCategory && !locked.category_id) {
         params.set("category_id", String(selectedCategory));
@@ -159,37 +160,40 @@ export default function ProductListing({
     [apiBase, locked, selectedBrands, selectedCategory, minPrice, maxPrice, inStockOnly, sort]
   );
 
-  // Fetch page
   const loadingRef = useRef(false);
-  const fetchPage = useCallback(
-    async (pageNum: number) => {
-      if (loadingRef.current) return;
-      loadingRef.current = true;
-      setLoading(true);
-      try {
-        const res = await fetch(buildUrl(pageNum));
-        const json = await res.json();
-        const list: Product[] = Array.isArray(json.data)
-          ? json.data
-          : json.data?.products ?? [];
-        const pagination = json.pagination ?? {};
-        const totalPages = pagination.total_pages ?? 1;
-
-        setProducts((prev) => (pageNum === 1 ? list : [...prev, ...list]));
-        setHasMore(pageNum < totalPages && list.length > 0);
-      } catch {
-        setHasMore(false);
-      } finally {
-        setLoading(false);
-        loadingRef.current = false;
-      }
-    },
-    [buildUrl]
-  );
-
+  const previousFilter = useRef(filterKey);
+  const requestUrl = buildUrl(page);
   useEffect(() => {
-    fetchPage(page);
-  }, [page, fetchPage]);
+    const changed = previousFilter.current !== filterKey;
+    previousFilter.current = filterKey;
+    if (changed) {
+      setProducts([]);
+      setHasMore(true);
+      if (page !== 1) { setPage(1); return; }
+    }
+    const controller = new AbortController();
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    fetch(requestUrl, { signal: controller.signal })
+      .then(async res => {
+        if (!res.ok) throw new Error("Ürünler yüklenemedi. Filtreleri kontrol edip tekrar deneyin.");
+        return res.json();
+      })
+      .then(json => {
+        if (controller.signal.aborted) return;
+        const list: Product[] = Array.isArray(json.data) ? json.data : json.data?.products ?? [];
+        setProducts(prev => page === 1 ? list : [...prev, ...list.filter(p => !prev.some(old => old.id === p.id))]);
+        setHasMore(page < (json.pagination?.total_pages ?? 1) && list.length > 0);
+      })
+      .catch(err => {
+        if (!controller.signal.aborted) { setError(err.message); setHasMore(false); }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) { setLoading(false); loadingRef.current = false; }
+      });
+    return () => controller.abort();
+  }, [requestUrl, filterKey, page, retry]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -303,7 +307,7 @@ export default function ProductListing({
           {showBrandFilter && brands.length > 0 && (
             <FilterSection title="Markalar">
               <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-                {brands.slice(0, 100).map((b) => (
+                {brands.map((b) => (
                   <label
                     key={b.id}
                     className="flex items-center gap-2 text-sm text-text-primary cursor-pointer hover:text-primary"
@@ -382,7 +386,7 @@ export default function ProductListing({
 
         {/* Grid */}
         <div className="theme-listing-products">
-          {products.length === 0 && !loading ? (
+          {error ? <div role="alert">{error} <button type="button" onClick={() => setRetry(n => n + 1)}>Tekrar dene</button></div> : products.length === 0 && !loading ? (
             <div className="py-16 text-center text-text-secondary">
               Bu kriterlere uygun ürün bulunamadı.
             </div>

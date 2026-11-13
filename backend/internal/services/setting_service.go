@@ -24,9 +24,9 @@ var secretKeys = map[string]bool{
 }
 
 const (
-	cacheKeySettingsAll        = "settings:all"
+	cacheKeySettingsAll         = "settings:all"
 	cacheKeySettingsGroupPrefix = "settings:group:"
-	cacheTTLSettings           = 6 * time.Hour
+	cacheTTLSettings            = 6 * time.Hour
 )
 
 type SettingService struct {
@@ -132,7 +132,7 @@ func (s *SettingService) GetByGroupRedacted(group string) ([]models.Setting, err
 	out := make([]models.Setting, len(settings))
 	for i, st := range settings {
 		out[i] = st
-		if secretKeys[st.Key] && st.Value != "" {
+		if IsSecretSetting(st.Key) && st.Value != "" {
 			out[i].Value = secretKeyMask
 		}
 	}
@@ -148,7 +148,7 @@ func (s *SettingService) UpdatePreservingSecrets(settings []models.Setting) erro
 	}
 	preserved := make([]models.Setting, 0, len(settings))
 	for _, st := range settings {
-		if secretKeys[st.Key] {
+		if IsSecretSetting(st.Key) {
 			val := strings.TrimSpace(st.Value)
 			if val == "" || val == secretKeyMask {
 				continue // bu key'i atla; mevcut DB değeri korunsun
@@ -228,4 +228,8 @@ func (s *SettingService) BizimhesapConfig() (bizimhesap.Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+func IsSecretSetting(key string) bool {
+	return secretKeys[key] || key == "bizimhesap.firm_id" || strings.Contains(key, "secret") || strings.Contains(key, "token") || strings.Contains(key, "password") || strings.HasSuffix(key, "api_key")
 }

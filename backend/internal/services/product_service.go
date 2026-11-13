@@ -11,10 +11,14 @@ import (
 )
 
 type ProductListParams struct {
+	IDs             []uint64
 	Page            int
 	PerPage         int
 	CategoryID      *uint64
 	BrandID         *uint64
+	BrandIDs        []uint64
+	InStock         bool
+	CampaignID      *uint64
 	MinPrice        *float64
 	MaxPrice        *float64
 	SortBy          string
@@ -37,6 +41,9 @@ func (s *ProductService) List(params ProductListParams) ([]models.Product, int64
 	var total int64
 
 	query := s.db.Model(&models.Product{})
+	if len(params.IDs) > 0 {
+		query = query.Where("products.id IN ?", params.IDs)
+	}
 
 	if params.IsActive != nil {
 		query = query.Where("products.is_active = ?", *params.IsActive)
@@ -46,6 +53,19 @@ func (s *ProductService) List(params ProductListParams) ([]models.Product, int64
 		query = query.Where("products.brand_id = ?", *params.BrandID)
 	}
 
+	if len(params.BrandIDs) > 0 {
+		query = query.Where("products.brand_id IN ?", params.BrandIDs)
+	}
+	if params.InStock {
+		query = query.Where("products.stock > 0")
+	}
+	if params.CampaignID != nil {
+		sub := s.db.Table("campaign_products").Select("product_id").Where("campaign_id = ?", *params.CampaignID)
+		query = query.Where("products.id IN (?)", sub)
+	}
+	if params.SortBy == "featured" {
+		query = query.Where("products.is_featured = ?", true)
+	}
 	if params.MinPrice != nil {
 		query = query.Where("products.price >= ?", *params.MinPrice)
 	}
@@ -101,13 +121,14 @@ func (s *ProductService) List(params ProductListParams) ([]models.Product, int64
 	case "trending":
 		query = query.Order("products.sold_count DESC, products.view_count DESC")
 	case "featured":
-		query = query.Where("products.is_featured = ?", true).Order("products.created_at DESC")
+		query = query.Order("products.created_at DESC")
 	case "name_asc":
 		query = query.Order("products.name ASC")
 	default:
 		query = query.Order("products.created_at DESC")
 	}
 
+	query = query.Order("products.id DESC")
 	offset := utils.GetOffset(params.Page, params.PerPage)
 
 	err := query.
@@ -151,7 +172,7 @@ func (s *ProductService) GetBySlug(slug string) (*models.Product, error) {
 	var product models.Product
 
 	err := s.db.
-		Where("slug = ?", slug).
+		Where("slug = ? AND is_active = ?", slug, true).
 		Preload("Brand").
 		Preload("Categories").
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
@@ -439,4 +460,3 @@ func (s *ProductService) descendantCategoryIDs(rootID uint64) ([]uint64, error) 
 	}
 	return ids, nil
 }
-

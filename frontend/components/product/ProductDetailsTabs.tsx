@@ -35,7 +35,7 @@ export default function ProductDetailsTabs({ product, tab, onTabChange }: { prod
       <dl className="pdp-specs">{details.map(([name,value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl>
     </div>
     <div role="tabpanel" id="product-panel-reviews" aria-labelledby="product-tab-reviews" hidden={tab !== "reviews"} tabIndex={0} className="pdp-tab-panel">
-      {tab === "reviews" && <ProductReviews productId={product.id} productName={product.name} />}
+      {tab === "reviews" && <ProductReviews key={product.id} productId={product.id} productName={product.name} />}
     </div>
   </section>;
 }

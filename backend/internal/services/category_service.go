@@ -86,32 +86,30 @@ func (s *CategoryService) Tree() ([]models.Category, error) {
 
 // buildCategoryTree bellekte kategori ağacını oluşturur.
 func buildCategoryTree(categories []models.Category) []models.Category {
-	categoryMap := make(map[uint64]*models.Category, len(categories))
-	for i := range categories {
-		categories[i].Children = []models.Category{}
-		categoryMap[categories[i].ID] = &categories[i]
+	byParent := make(map[uint64][]models.Category)
+	for _, category := range categories {
+		parent := uint64(0)
+		if category.ParentID != nil {
+			parent = *category.ParentID
+		}
+		byParent[parent] = append(byParent[parent], category)
 	}
-
-	var roots []models.Category
-	for i := range categories {
-		cat := &categories[i]
-		if cat.ParentID != nil {
-			if parent, ok := categoryMap[*cat.ParentID]; ok {
-				parent.Children = append(parent.Children, *cat)
+	visiting := make(map[uint64]bool)
+	var children func(uint64) []models.Category
+	children = func(parent uint64) []models.Category {
+		result := make([]models.Category, 0)
+		for _, category := range byParent[parent] {
+			if visiting[category.ID] {
+				continue
 			}
-		} else {
-			roots = append(roots, *cat)
+			visiting[category.ID] = true
+			category.Children = children(category.ID)
+			delete(visiting, category.ID)
+			result = append(result, category)
 		}
+		return result
 	}
-
-	// Kök kategorilerin güncel children değerlerini al
-	for i, root := range roots {
-		if updated, ok := categoryMap[root.ID]; ok {
-			roots[i].Children = updated.Children
-		}
-	}
-
-	return roots
+	return children(0)
 }
 
 // GetBySlug slug ile kategori getirir, alt kategoriler dahil.

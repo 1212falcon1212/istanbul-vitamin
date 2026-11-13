@@ -20,7 +20,7 @@ export default function FaviconInjector() {
     const probe = new window.Image();
     probe.onload = () => {
       document.head
-        .querySelectorAll<HTMLLinkElement>('link[rel~="icon"], link[rel="apple-touch-icon"]')
+        .querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')
         .forEach((link) => {
           link.href = FAVICON_HREF;
           link.type = "image/png";
@@ -29,7 +29,7 @@ export default function FaviconInjector() {
 
       ensureIconLink("icon");
       ensureIconLink("shortcut icon");
-      ensureIconLink("apple-touch-icon");
+
     };
     probe.src = FAVICON_HREF;
   }, []);

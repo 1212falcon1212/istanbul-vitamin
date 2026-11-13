@@ -336,9 +336,8 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 // Logout oturumu kapatir. Role'e göre ilgili cookie temizlenir —
 // diğer oturuma dokunulmaz (user çıkışı admin oturumunu kapatmaz).
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	role, _ := c.Locals("role").(string)
 	prod := h.cfg.AppEnv == "production"
-	if role == "super_admin" || role == "admin" || role == "editor" {
+	if c.Path() == "/api/v1/admin/logout" {
 		clearAdminCookie(c, prod)
 	} else {
 		clearAuthCookie(c, prod)

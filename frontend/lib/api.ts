@@ -68,7 +68,8 @@ async function request<T>(
       inner &&
       typeof inner === "object" &&
       !Array.isArray(inner) &&
-      !hasObjectShape(inner)
+      !hasObjectShape(inner) &&
+      Object.keys(inner).filter(key => key !== "pagination").length === 1
     ) {
       const arr = firstArrayValue(inner);
       if (arr !== null) {

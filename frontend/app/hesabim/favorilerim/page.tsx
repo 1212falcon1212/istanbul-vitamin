@@ -49,14 +49,10 @@ export default function FavorilerimPage() {
   async function handleToggleFavorite(product: Product) {
     try {
       await toggleFavorite(product.id);
-      setFavorites((prev) => prev.filter((f) => f.product_id !== product.id));
-      setFavoriteIds((prev) => {
-        const next = new Set(prev);
-        next.delete(product.id);
-        return next;
-      });
+      if (favorites.length === 1 && page > 1) setPage(page - 1);
+      else await fetchFavorites();
     } catch {
-      // Silently fail, user can retry
+      setError("Favori kaldırılamadı. Lütfen tekrar deneyin.");
     }
   }
 

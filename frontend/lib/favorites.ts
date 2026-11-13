@@ -6,9 +6,11 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import React from "react";
+import { useAuth } from "./auth";
 import { api } from "./api";
 
 interface Favorite {
@@ -29,52 +31,45 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [ids, setIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-    if (!token) {
-      setIds(new Set());
-      return;
-    }
+  const { user } = useAuth();
+  const generation = useRef(0);
+  const pending = useRef(new Set<number>());
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
+
+  useEffect(() => {
+    const version = ++generation.current;
+    setIds(new Set());
+    pending.current = new Set();
+    if (!user) { setIsLoading(false); return; }
     setIsLoading(true);
-    try {
-      const res = await api.get<Favorite[] | { favorites: Favorite[] }>(
-        "/favorites"
-      );
-      const list: Favorite[] = Array.isArray(res.data)
-        ? res.data
-        : res.data?.favorites ?? [];
-      setIds(new Set(list.map((f) => f.product_id)));
-    } catch {
-      setIds(new Set());
-    } finally {
-      setIsLoading(false);
+    async function load() {
+      const all = new Set<number>();
+      for (let page = 1; ; page++) {
+        const res = await api.getList<Favorite[]>(`/favorites?page=${page}&per_page=500`);
+        if (generation.current !== version) return;
+        const list = Array.isArray(res.data) ? res.data : [];
+        list.forEach(f => all.add(f.product_id));
+        if (!list.length || page >= (res.pagination?.total_pages ?? 1)) break;
+      }
+      if (generation.current === version) setIds(all);
     }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Auth değişikliğinde favorileri yeniden yükle (login/logout sonrası stale list).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    function onAuthChange() {
-      load();
-    }
-    window.addEventListener("auth-changed", onAuthChange);
-    return () => window.removeEventListener("auth-changed", onAuthChange);
-  }, [load]);
+    load().catch(() => {}).finally(() => { if (generation.current === version) setIsLoading(false); });
+    return () => { ++generation.current; };
+  }, [user?.id]);
 
   const isFavorite = useCallback((pid: number) => ids.has(pid), [ids]);
 
   const toggle = useCallback(
     async (productId: number) => {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+      if (!user) {
         throw new Error("Favori eklemek için giriş yapmalısın");
       }
-      const has = ids.has(productId);
+      if (isLoading) throw new Error("Favoriler yükleniyor, lütfen tekrar deneyin.");
+      if (pending.current.has(productId)) return;
+      pending.current.add(productId);
+      const version = generation.current;
+      const has = idsRef.current.has(productId);
       // Optimistic
       setIds((prev) => {
         const next = new Set(prev);
@@ -89,7 +84,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           await api.post("/favorites", { product_id: productId });
         }
       } catch (err) {
-        // Revert
+        // Ignore responses belonging to a previous session.
+        if (version !== generation.current) throw err;
         setIds((prev) => {
           const next = new Set(prev);
           if (has) next.add(productId);
@@ -97,9 +93,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           return next;
         });
         throw err;
-      }
+      } finally { if (version === generation.current) pending.current.delete(productId); }
     },
-    [ids]
+    [isLoading, user]
   );
 
   return React.createElement(

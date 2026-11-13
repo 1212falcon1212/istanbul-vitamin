@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -34,7 +35,7 @@ type createProductRequest struct {
 	ComparePrice      *float64                  `json:"compare_price"`
 	CostPrice         *float64                  `json:"cost_price"`
 	Stock             int                       `json:"stock"`
-	LowStockThreshold int                      `json:"low_stock_threshold"`
+	LowStockThreshold int                       `json:"low_stock_threshold"`
 	Weight            *float64                  `json:"weight"`
 	IsActive          *bool                     `json:"is_active"`
 	IsFeatured        bool                      `json:"is_featured"`
@@ -86,30 +87,56 @@ func (h *ProductHandler) List(c *fiber.Ctx) error {
 	isActive := true
 	params.IsActive = &isActive
 
-	if v := c.Query("category_id"); v != "" {
-		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
-			params.CategoryID = &id
+	for key, target := range map[string]**uint64{"category_id": &params.CategoryID, "brand_id": &params.BrandID, "campaign_id": &params.CampaignID} {
+		if raw := c.Query(key); raw != "" {
+			id, err := strconv.ParseUint(raw, 10, 64)
+			if err != nil || id == 0 {
+				return utils.BadRequest(c, "Geçersiz "+key)
+			}
+			*target = &id
 		}
 	}
-	if v := c.Query("brand_id"); v != "" {
-		if id, err := strconv.ParseUint(v, 10, 64); err == nil {
-			params.BrandID = &id
+	if raw := c.Query("brand_ids"); raw != "" {
+		for _, value := range strings.Split(raw, ",") {
+			id, err := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
+			if err != nil || id == 0 || len(params.BrandIDs) >= 100 {
+				return utils.BadRequest(c, "Geçersiz marka listesi")
+			}
+			params.BrandIDs = append(params.BrandIDs, id)
 		}
 	}
-	if v := c.Query("min_price"); v != "" {
-		if p, err := strconv.ParseFloat(v, 64); err == nil {
-			params.MinPrice = &p
+	for key, target := range map[string]**float64{"min_price": &params.MinPrice, "max_price": &params.MaxPrice} {
+		if raw := c.Query(key); raw != "" {
+			value, err := strconv.ParseFloat(raw, 64)
+			if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+				return utils.BadRequest(c, "Geçersiz fiyat")
+			}
+			*target = &value
 		}
 	}
-	if v := c.Query("max_price"); v != "" {
-		if p, err := strconv.ParseFloat(v, 64); err == nil {
-			params.MaxPrice = &p
+	if params.MinPrice != nil && params.MaxPrice != nil && *params.MinPrice > *params.MaxPrice {
+		return utils.BadRequest(c, "Minimum fiyat maksimum fiyatı aşamaz")
+	}
+	if raw := c.Query("in_stock"); raw != "" {
+		value, err := strconv.ParseBool(raw)
+		if err != nil {
+			return utils.BadRequest(c, "Geçersiz stok filtresi")
 		}
+		params.InStock = value
 	}
 	if v := strings.TrimSpace(c.Query("concern")); v != "" {
 		params.ConcernKeywords = ConcernKeywords(v)
 	}
 
+	if raw := c.Query("ids"); raw != "" {
+		for _, v := range strings.Split(raw, ",") {
+			id, e := strconv.ParseUint(strings.TrimSpace(v), 10, 64)
+			if e != nil || id == 0 || len(params.IDs) >= 30 {
+				return utils.BadRequest(c, "Geçersiz ürün ID listesi")
+			}
+			params.IDs = append(params.IDs, id)
+		}
+	}
 	products, total, err := h.service.List(params)
 	if err != nil {
 		return utils.InternalError(c)

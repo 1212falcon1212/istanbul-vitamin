@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -35,12 +36,12 @@ func main() {
 	_ = rdb
 
 	// Auto-migrate models — prod'da kapalı (schema drift'i engellemek için)
-	if cfg.AppEnv != "production" {
+	if cfg.AppEnv != "production" && os.Getenv("AUTO_MIGRATE") != "false" {
 		if err := models.AutoMigrate(db); err != nil {
 			log.Fatalf("Migration hatası: %v", err)
 		}
 	} else {
-		log.Println("Production modunda AutoMigrate atlandı. Migration dosyalarını elle uygula.")
+		log.Println("AutoMigrate kapalı. Şema değişiklikleri için migration dosyalarını elle uygula.")
 	}
 
 	// Create Fiber app
@@ -104,6 +105,10 @@ func main() {
 	// Setup routes
 	setupRoutes(app, cfg, db, arasSvc, cancellationSvc, settingSvc)
 
+	notificationContext, stopNotifications := context.WithCancel(context.Background())
+	defer stopNotifications()
+	go (&services.NotificationService{DB: db, Config: cfg}).Run(notificationContext)
+
 	// Background scheduler (cart cleanup + Aras 15 dk poll).
 	// Bizimhesap retry cron'u manuel mod için nil geçilerek kapatıldı.
 	sched, schedErr := scheduler.Start(nil, arasSvc)
@@ -136,7 +141,14 @@ func main() {
 }
 
 func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *aras.Service, cancellationSvc *services.CancellationService, settingSvc *services.SettingService) {
-	api := app.Group("/api/v1")
+	api := app.Group("/api/v1", func(c *fiber.Ctx) error { c.Set("Cache-Control", "no-store"); return c.Next() })
+
+	pushHandler := &handlers.PushHandler{}
+	api.Get("/push/config", pushHandler.Config)
+	api.Post("/push/subscribe", middleware.NewAuthMiddleware(cfg).OptionalAuthenticate, limiter.New(limiter.Config{Max: 10, Expiration: time.Minute}), pushHandler.Subscribe)
+	api.Post("/push/unsubscribe", limiter.New(limiter.Config{Max: 10, Expiration: time.Minute}), pushHandler.Unsubscribe)
+	googleHandler := handlers.NewGoogleHandler()
+	api.Get("/tracking/config", googleHandler.Public)
 
 	// Health check
 	api.Get("/health", func(c *fiber.Ctx) error {
@@ -216,7 +228,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	api.Put("/users/me", requireAuth, authHandler.UpdateProfile)
 	api.Put("/users/me/password", requireAuth, authHandler.ChangePassword)
 	api.Post("/users/me/resend-verification", requireAuth, authHandler.ResendVerification)
-	auth.Post("/logout", requireAuth, authHandler.Logout)
+	auth.Post("/logout", authHandler.Logout)
 
 	// Products (public)
 	productHandler := handlers.NewProductHandler()
@@ -265,7 +277,6 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	// Settings (public)
 	settingHandler := handlers.NewSettingHandler()
 	api.Get("/settings", settingHandler.GetAll)
-	api.Get("/settings/:group", settingHandler.GetByGroup)
 
 	// Search (public)
 	searchHandler := handlers.NewSearchHandler()
@@ -313,6 +324,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	// })
 	api.Get("/orders", requireAuth, orderHandler.List)
 	api.Get("/orders/:id", requireAuth, orderHandler.GetByID)
+	api.Get("/tracking/purchase/:number", requireAuth, orderHandler.PurchaseMeasurement)
 	api.Post("/orders", requireAuth, orderHandler.Create)
 
 	// Cancellation/Return talebi (müşteri)
@@ -440,6 +452,18 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	admin.Delete("/reviews/:id", reviewHandler.AdminDelete)
 
 	// Admin - Settings
+	pushAdmin := admin.Group("/push", middleware.NewAdminMiddleware(cfg).RequireSuperAdmin)
+	pushAdmin.Get("/status", pushHandler.Status)
+	pushAdmin.Post("/test", pushHandler.Test)
+	notificationHandler := &handlers.NotificationHandler{Config: cfg}
+	pushAdmin.Get("/deliveries", notificationHandler.List)
+	pushAdmin.Post("/campaign", notificationHandler.Campaign)
+	googleAdmin := admin.Group("/google", middleware.NewAdminMiddleware(cfg).RequireSuperAdmin)
+	googleAdmin.Get("/status", googleHandler.Status)
+	googleAdmin.Put("/config", googleHandler.Save)
+	googleAdmin.Post("/report/:provider", googleHandler.Report)
+	admin.Get("/settings", settingHandler.AdminGetAll)
+	admin.Get("/settings/:group", settingHandler.GetByGroup)
 	admin.Put("/settings", settingHandler.Update)
 	admin.Post("/settings/bizimhesap/test", settingHandler.TestBizimhesap)
 	admin.Post("/settings/aras/test", arasHandler.TestConnection)

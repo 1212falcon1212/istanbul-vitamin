@@ -36,6 +36,9 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	if err := m.parseAndSetClaims(c, "auth_token"); err != nil {
 		return err
 	}
+	if c.Locals("role") != "user" {
+		return fiber.NewError(fiber.StatusForbidden, "Müşteri oturumu gerekli")
+	}
 	return c.Next()
 }
 
@@ -50,8 +53,8 @@ func (m *AuthMiddleware) OptionalAuthenticate(c *fiber.Ctx) error {
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(m.cfg.JWTSecret), nil
-	})
-	if err != nil || !token.Valid {
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
+	if err != nil || !token.Valid || claims.UserID == 0 || claims.Role != "user" {
 		return c.Next()
 	}
 	if !passwordTokenStillValid(claims) {
@@ -102,28 +105,19 @@ func (m *AuthMiddleware) AdminAuthenticate(c *fiber.Ctx) error {
 func (m *AuthMiddleware) parseAndSetClaims(c *fiber.Ctx, cookieName string) error {
 	tokenString := extractTokenFrom(c, cookieName)
 	if tokenString == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"error":   "Yetkilendirme başlığı eksik",
-		})
+		return fiber.NewError(fiber.StatusUnauthorized, "Yetkilendirme başlığı eksik")
 	}
 
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(m.cfg.JWTSecret), nil
-	})
-	if err != nil || !token.Valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"error":   "Geçersiz veya süresi dolmuş token",
-		})
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
+	if err != nil || !token.Valid || claims.UserID == 0 {
+		return fiber.NewError(fiber.StatusUnauthorized, "Geçersiz veya süresi dolmuş token")
 	}
 
 	if !passwordTokenStillValid(claims) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"success": false,
-			"error":   "Şifreniz değiştirildiği için oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.",
-		})
+		return fiber.NewError(fiber.StatusUnauthorized, "Oturum sonlandırıldı. Lütfen tekrar giriş yapın.")
 	}
 
 	c.Locals("userID", claims.UserID)

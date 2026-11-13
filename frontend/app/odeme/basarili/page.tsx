@@ -1,6 +1,7 @@
 "use client";
 
-import { use } from "react";
+import { readConsent, trackPaidPurchase } from "@/lib/marketing";
+import { useEffect, use } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -14,6 +15,22 @@ export default function BasariliPage({ searchParams }: BasariliPageProps) {
   const sp = use(searchParams);
   const orderNumber = typeof sp.order === "string" ? sp.order : "";
 
+  useEffect(() => {
+    const consent=readConsent(); if (!orderNumber || (!consent?.analytics && !consent?.ads)) return;
+    let cancelled=false;let attempts=0;let timer:ReturnType<typeof setTimeout>;
+    async function check() {
+      try {
+        const token=localStorage.getItem("auth_token");
+        const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/tracking/purchase/${encodeURIComponent(orderNumber)}`,{cache:"no-store",credentials:"include",headers:token?{Authorization:`Bearer ${token}`}:{}});
+        if (!response.ok) return;
+        const result=await response.json();
+        if(cancelled)return;
+        if(result.data?.payment_status==="paid") { trackPaidPurchase(result.data); return; }
+        if(++attempts<6) timer=setTimeout(check,5000);
+      } catch { /* Provider state is unavailable; never assume a purchase. */ }
+    }
+    void check();return()=>{cancelled=true;clearTimeout(timer)};
+  },[orderNumber]);
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -48,8 +65,7 @@ export default function BasariliPage({ searchParams }: BasariliPageProps) {
                   Siparişiniz alındı!
                 </h1>
                 <p className="text-text-secondary max-w-md mx-auto">
-                  Siparişiniz başarıyla oluşturuldu. Hazırlık sürecine aldık ve
-                  hemen kargoya verilecek.
+                  Sipariş ve ödeme durumunuzu hesabınızdan takip edebilirsiniz.
                 </p>
 
                 {orderNumber && (

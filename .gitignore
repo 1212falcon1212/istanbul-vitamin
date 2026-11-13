@@ -33,6 +33,7 @@ deploy/webhook/bin/
 
 # --- misc ---
 node_modules/
+.local-backups/
 
 # --- local tooling (not part of the project) ---
 .claude/
@@ -45,3 +46,6 @@ GEMINI.md
 # --- vendor reference docs (not needed at runtime) ---
 aras-kargo-entegrasyon/
 
+
+# Encrypted private integration state
+backend/.private/

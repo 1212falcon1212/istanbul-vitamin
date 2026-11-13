@@ -6,6 +6,7 @@ import (
 	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/utils"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type FavoriteService struct {
@@ -49,17 +50,8 @@ func (s *FavoriteService) List(userID uint64, page, perPage int) ([]models.Favor
 func (s *FavoriteService) Add(userID, productID uint64) error {
 	// Urun var mi kontrol et
 	var productCount int64
-	if err := s.db.Model(&models.Product{}).Where("id = ?", productID).Count(&productCount).Error; err != nil || productCount == 0 {
+	if err := s.db.Model(&models.Product{}).Where("id = ? AND is_active = ?", productID, true).Count(&productCount).Error; err != nil || productCount == 0 {
 		return errors.New("ürün bulunamadı")
-	}
-
-	// Tekrar kontrolu
-	var existingCount int64
-	if err := s.db.Model(&models.Favorite{}).Where("user_id = ? AND product_id = ?", userID, productID).Count(&existingCount).Error; err != nil {
-		return errors.New("favori kontrol edilirken bir hata oluştu")
-	}
-	if existingCount > 0 {
-		return errors.New("bu ürün zaten favorilerinizde")
 	}
 
 	favorite := models.Favorite{
@@ -67,7 +59,7 @@ func (s *FavoriteService) Add(userID, productID uint64) error {
 		ProductID: productID,
 	}
 
-	if err := s.db.Create(&favorite).Error; err != nil {
+	if err := s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&favorite).Error; err != nil {
 		return errors.New("favori eklenirken bir hata oluştu")
 	}
 
@@ -79,9 +71,6 @@ func (s *FavoriteService) Remove(userID, productID uint64) error {
 	result := s.db.Where("user_id = ? AND product_id = ?", userID, productID).Delete(&models.Favorite{})
 	if result.Error != nil {
 		return errors.New("favori kaldırılırken bir hata oluştu")
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("favori bulunamadı")
 	}
 	return nil
 }

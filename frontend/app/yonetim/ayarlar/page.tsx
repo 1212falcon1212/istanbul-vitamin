@@ -6,7 +6,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { api } from "@/lib/api";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { useSettings } from "@/lib/settings";
-import type { Setting } from "@/types";
+
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
@@ -60,6 +60,10 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
       { key: "site_name", label: "Site Adı", type: "text" },
       { key: "site_description", label: "Site Açıklaması", type: "textarea", hint: "Footer'da ve meta bilgilerinde kullanılır." },
       { key: "top_header_enabled", label: "Üst Duyuru Aktif", type: "checkbox" },
+      { key: "top_header_mode", label: "Üst şerit türü", type: "select", options: [{value:"text",label:"Metin duyurusu"},{value:"image",label:"Görsel banner"}] },
+      { key: "top_header_image", label: "Üst şerit masaüstü görseli", type: "image", hint: "Öneri: 2880 × 160 px. Görsel banner türü seçildiğinde metnin yerine gösterilir." },
+      { key: "top_header_image_mobile", label: "Üst şerit mobil görseli", type: "image", hint: "Öneri: 780 × 160 px. Boşsa masaüstü görseli kullanılır." },
+      { key: "top_header_image_alt", label: "Üst şerit görsel açıklaması", type: "text" },
       { key: "top_header_text", label: "Üst Duyuru Metni", type: "text", hint: "Sitenin en üstündeki duyuru alanında gösterilir." },
       { key: "top_header_link", label: "Üst Duyuru Linki", type: "url", hint: "Opsiyonel. Boşsa duyuru tıklanamaz." },
     ],
@@ -68,7 +72,7 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     id: "marka",
     label: "Marka & Logo",
     fields: [
-      { key: "site_logo_url", label: "Logo (Açık Arkaplan)", type: "image", hint: "Header ve koyu arkaplanlar dışında kullanılır. PNG/SVG önerilir, max 10 MB." },
+      { key: "site_logo_url", label: "Logo (Açık Arkaplan)", type: "image", hint: "Header ve koyu arkaplanlar dışında kullanılır. PNG önerilir, max 10 MB." },
       { key: "site_logo_url_dark", label: "Logo (Koyu Arkaplan)", type: "image", hint: "Footer gibi koyu bölgeler için beyaz logo (opsiyonel — boşsa Açık logo kullanılır)." },
       { key: "site_favicon_url", label: "Favicon", type: "image", uploadPurpose: "favicon", hint: "Tarayıcı sekmesinde görünen ikon. Her boyutta yükleyebilirsiniz; otomatik olarak 64×64 PNG'ye küçültülür." },
     ],
@@ -177,12 +181,8 @@ export default function SettingsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await api.get<Setting[]>(`/settings/${group}`);
-      const map: Record<string, string> = {};
-      (res.data ?? []).forEach((s) => {
-        map[s.key] = s.value;
-      });
-      setValues(map);
+      const res = await api.get<{settings: Record<string,string>}>("/admin/settings");
+      setValues(res.data?.settings ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ayarlar yuklenemedi");
     } finally {
@@ -195,7 +195,7 @@ export default function SettingsPage() {
   }, [activeTab, fetchSettings]);
 
   async function handleSave() {
-    if (!currentTab) return;
+    if (!currentTab || loading || error) return;
     setSaving(true);
     setSaveSuccess(false);
     setError("");
@@ -221,7 +221,7 @@ export default function SettingsPage() {
     "w-full px-3 py-2 rounded-lg border border-border bg-card-bg text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 
   return (
-    <AdminShell title="Ayarlar">
+    <AdminShell title="Ayarlar"><div className="mb-5 flex gap-5"><a href="/yonetim/anasayfa" className="underline">Ana sayfa içerikleri</a><a href="/yonetim/bildirimler" className="underline">Firebase bildirimleri</a></div>
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 mb-6 border-b border-border pb-2">
         {tabs.map((tab) => (
@@ -274,13 +274,14 @@ export default function SettingsPage() {
                     <span>{field.label}</span>
                   </label>
                 ) : (
-                  <label className="block text-sm text-text-secondary mb-1">
+                  <label htmlFor={`setting-${field.key}`} className="block text-sm text-text-secondary mb-1">
                     {field.label}
                   </label>
                 )}
 
                 {field.type === "textarea" ? (
                   <textarea
+                    id={`setting-${field.key}`}
                     className={inputCls}
                     rows={3}
                     value={values[field.key] ?? ""}
@@ -291,6 +292,7 @@ export default function SettingsPage() {
                   />
                 ) : field.type === "image" ? (
                   <ImageSettingField
+                    id={`setting-${field.key}`}
                     value={values[field.key] ?? ""}
                     purpose={field.uploadPurpose}
                     onChange={(v) =>
@@ -299,6 +301,7 @@ export default function SettingsPage() {
                   />
                 ) : field.type === "select" ? (
                   <select
+                    id={`setting-${field.key}`}
                     className={inputCls}
                     value={values[field.key] ?? ""}
                     onChange={(e) =>
@@ -313,6 +316,7 @@ export default function SettingsPage() {
                   </select>
                 ) : field.type === "password" ? (
                   <input
+                    id={`setting-${field.key}`}
                     type="password"
                     className={inputCls}
                     value={values[field.key] === "********" ? "" : values[field.key] ?? ""}
@@ -323,6 +327,7 @@ export default function SettingsPage() {
                   />
                 ) : field.type === "checkbox" ? null : (
                   <input
+                    id={`setting-${field.key}`}
                     type={field.type}
                     className={cn(inputCls, field.readOnly && "bg-gray-50 text-text-secondary")}
                     readOnly={field.readOnly}
@@ -343,7 +348,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 mt-6 flex-wrap">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || loading || !!error}
               className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {saving ? "Kaydediliyor..." : "Kaydet"}
@@ -442,6 +447,7 @@ function TabAction({
 }
 
 function ImageSettingField({
+  id,
   value,
   onChange,
   purpose,
@@ -449,6 +455,7 @@ function ImageSettingField({
   value: string;
   onChange: (v: string) => void;
   purpose?: string;
+  id: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -490,6 +497,7 @@ function ImageSettingField({
 
         <div className="flex-1 min-w-0 space-y-2">
           <input
+            id={id}
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}

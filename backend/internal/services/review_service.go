@@ -20,7 +20,7 @@ func NewReviewService(db *gorm.DB) *ReviewService {
 // List sadece onaylanmis yorumlari dondurur (public).
 // User iliskisinde sadece FirstName ve LastName alinir.
 func (s *ReviewService) List(productID uint64, page, perPage int) ([]models.Review, int64, error) {
-	var reviews []models.Review
+	reviews := make([]models.Review, 0)
 	var total int64
 
 	query := s.db.Model(&models.Review{}).
@@ -55,6 +55,9 @@ func (s *ReviewService) Create(userID, productID uint64, rating uint8, title, bo
 	}
 
 	body = strings.TrimSpace(body)
+	if len([]rune(title)) > 200 || len([]rune(body)) > 5000 {
+		return nil, errors.New("yorum başlığı en fazla 200, yorum en fazla 5000 karakter olabilir")
+	}
 	if len([]rune(body)) < 10 {
 		return nil, errors.New("yorum en az 10 karakter olmalıdır")
 	}
@@ -145,7 +148,7 @@ func (s *ReviewService) DeleteByUser(userID, reviewID uint64) error {
 
 // AdminList admin icin tum yorumlari dondurur (opsiyonel is_approved filtresi ile).
 func (s *ReviewService) AdminList(page, perPage int, isApproved *bool) ([]models.Review, int64, error) {
-	var reviews []models.Review
+	reviews := make([]models.Review, 0)
 	var total int64
 
 	query := s.db.Model(&models.Review{})

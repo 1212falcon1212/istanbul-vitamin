@@ -36,7 +36,7 @@ export default function BizimhesapSettingsPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const res = await api.get<{ settings: SettingsMap }>("/settings");
+      const res = await api.get<{ settings: SettingsMap }>("/admin/settings");
       const map = res.data?.settings ?? {};
       setEnabled(String(map["bizimhesap.enabled"] ?? "").toLowerCase() === "true");
       setFirmId(map["bizimhesap.firm_id"] ?? "");
