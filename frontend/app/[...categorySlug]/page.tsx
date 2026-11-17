@@ -293,12 +293,12 @@ async function CategoryView({
           <Breadcrumb items={breadcrumbItems} />
 
           {/* Category header */}
-          <div className="mb-8">
-            <h1 className="font-display text-3xl text-text-primary mb-2">
+          <div className="mb-4 lg:mb-8">
+            <h1 className="font-display text-xl lg:text-3xl text-text-primary mb-2">
               {category.name}
             </h1>
             {category.description && (
-              <p className="text-text-secondary max-w-3xl">
+              <p className="text-text-secondary max-w-3xl hidden lg:block">
                 {category.description}
               </p>
             )}
@@ -306,6 +306,7 @@ async function CategoryView({
 
           {/* Products listing — infinite scroll + filters */}
           <ProductListing
+            mobileRows
             locked={{ category_id: category.id }}
             showCategoryFilter={false}
             subcategories={(category.children ?? []).map((c) => ({

@@ -9,16 +9,19 @@ import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { CartDrawerProvider } from "@/lib/cart-drawer";
 import { FavoritesProvider } from "@/lib/favorites";
-import { SettingsProvider } from "@/lib/settings";
+import { FooterCatalogContext } from "@/lib/footer-context";
+import type { FooterCatalog } from "@/lib/footer-catalog";
+import { SettingsProvider, type SiteSettings } from "@/lib/settings";
 import CartDrawer from "@/components/cart/CartDrawer";
 import Marketing from "@/components/Marketing";
 import PWAPushPrompt from "@/components/PWAPushPrompt";
 import PWA from "@/components/PWA";
 import FaviconInjector from "@/components/FaviconInjector";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children, initialSettings, footerCatalog }: { children: React.ReactNode; initialSettings: SiteSettings; footerCatalog: FooterCatalog }) {
   return (
-    <SettingsProvider>
+    <SettingsProvider initialSettings={initialSettings}>
+      <FooterCatalogContext.Provider value={footerCatalog}>
       <FaviconInjector />
       <PWA />
       <PWAPushPrompt />
@@ -33,6 +36,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           </FavoritesProvider>
         </CartProvider>
       </AuthProvider>
+      </FooterCatalogContext.Provider>
     </SettingsProvider>
   );
 }

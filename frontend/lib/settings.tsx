@@ -60,8 +60,8 @@ async function fetchSettings(): Promise<SiteSettings> {
   }
 }
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings>({});
+export function SettingsProvider({ children, initialSettings = {} }: { children: ReactNode; initialSettings?: SiteSettings }) {
+  const [settings, setSettings] = useState<SiteSettings>(initialSettings);
   const [isLoading, setIsLoading] = useState(true);
 
   async function reload() {

@@ -25,7 +25,21 @@ const labels: Record<string, string> = {
   categories: "Kategori ürünleri",
   brands: "Markalar",
   promo: "Banner üst yazısı",
-  footer: "Alt alan",
+  footer: "Footer — alışveriş ve içerik bağlantıları",
+  brandTagline: "Logo altı marka mesajı",
+  servicesEnabled: "Alt hizmet şeridini göster",
+  services: "Hizmet şeridi (simge: truck, support, return, card)",
+  discoveryLinks: "Hızlı alışveriş bağlantıları",
+  catalogEnabled: "Kategori, marka ve ürün bağlantılarını göster",
+  categoryTitle: "Kategori başlığı",
+  categoryLimit: "Kategori sayısı (0–20)",
+  brandTitle: "Marka başlığı",
+  brandLimit: "Marka sayısı (0–20)",
+  productTitle: "Ürün bağlantıları başlığı",
+  productLimit: "Ürün sayısı (0–12)",
+  blogEnabled: "Yayınlanmış içerikleri göster",
+  blogTitle: "Blog / rehber başlığı",
+  blogSlugs: "Yayınlanmış sayfa slug’ları (virgülle, gösterim sırasıyla; boşsa gizli)",
   pwa: "Uygulama ve bildirim teklifi",
   title: "Başlık",
   description: "Açıklama",
@@ -269,6 +283,7 @@ export default function HomeEditor() {
                 {labels[key] || key}
               </summary>
               <div className="mt-5">
+                {key === "footer" && <p className="mb-5 rounded-lg bg-purple-50 p-4 text-sm leading-6">Kategoriler ve markalar aktif katalogdan gelir. ID alanlarını boş bırakırsanız otomatik seçim yapılır; ID’leri virgülle yazarak seçim ve sıralamayı belirleyebilirsiniz. Ürünler boş seçimde en yeni ürünlerden gelir. Sayıyı 0 yaparak ilgili grubu gizleyebilirsiniz. Blog bağlantıları yalnızca Sayfalar bölümünde yayınlanmış ve içeriği dolu sayfalardan oluşturulur. Blog slug alanını boş bırakırsanız bu alan görünmez. Kaydettikten sonra vitrini yenileyin; katalog güncellemeleri en geç 5 dakika içinde yansır.</p>}
                 <Editor
                   name={key}
                   path={key}

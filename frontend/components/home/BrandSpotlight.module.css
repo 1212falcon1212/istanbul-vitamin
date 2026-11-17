@@ -14,3 +14,9 @@
 .banner:hover .cta { color:#7823e5; border-color:#a777df; }
 @media(max-width:1199px) { .row { grid-template-columns:240px repeat(4,220px); overflow-x:auto; scroll-snap-type:x proximity; } .banner,.product { scroll-snap-align:start; } }
 @media(prefers-reduced-motion:reduce) { .row { scroll-behavior:auto; } }
+
+@media(max-width:767px) {
+  .row { grid-template-columns:minmax(0,1fr); gap:10px; border:0; overflow:visible; }
+  .product { border-left:0; }
+  .product :global(.catalog-product-card) { border:1px solid #e5e7eb; border-radius:8px; }
+}

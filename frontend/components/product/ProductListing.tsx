@@ -35,6 +35,7 @@ interface SubcategoryLink {
 }
 
 interface ProductListingProps {
+  mobileRows?: boolean;
   locked?: LockedFilters;
   showBrandFilter?: boolean;
   showCategoryFilter?: boolean;
@@ -50,6 +51,7 @@ const DEFAULT_API =
 const PER_PAGE = 24;
 
 export default function ProductListing({
+  mobileRows = false,
   locked = {},
   showBrandFilter = true,
   showCategoryFilter = true,
@@ -57,6 +59,7 @@ export default function ProductListing({
   subcategories,
   subcategoriesTitle = "Alt Kategoriler",
 }: ProductListingProps) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -232,9 +235,15 @@ export default function ProductListing({
     inStockOnly;
 
   return (
-    <div className="theme-listing grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-8">
+    <div className={`theme-listing grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-8 ${mobileRows ? "mobile-product-rows compact-listing" : ""}`}>
+      {mobileRows && <div className="mobile-listing-controls">
+        <button type="button" aria-expanded={filtersOpen} aria-controls="category-filters" onClick={() => setFiltersOpen(!filtersOpen)}>Filtreler {hasActiveFilters ? "•" : ""} <span aria-hidden="true">{filtersOpen ? "−" : "+"}</span></button>
+        <select aria-label="Ürünleri sırala" value={sort} onChange={e => setSort(e.target.value as SortOption)}>
+          {(Object.keys(SORT_LABELS) as SortOption[]).map(k => <option key={k} value={k}>{SORT_LABELS[k]}</option>)}
+        </select>
+      </div>}
       {/* Sidebar */}
-      <aside className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+      <aside id={mobileRows ? "category-filters" : undefined} className={`${mobileRows && !filtersOpen ? "hidden lg:block" : ""} lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto`}>
         <div className="theme-filters bg-white space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-base text-text-primary">Filtrele</h2>
@@ -351,6 +360,7 @@ export default function ProductListing({
               </div>
             </FilterSection>
           )}
+          {mobileRows && <button type="button" onClick={() => setFiltersOpen(false)} className="lg:hidden w-full rounded-lg bg-primary px-4 py-3 text-white">Ürünleri göster</button>}
         </div>
       </aside>
 
@@ -371,6 +381,7 @@ export default function ProductListing({
               Sırala
             </label>
             <select
+              aria-label="Ürünleri sırala"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               className="px-3 py-2 text-sm border border-border rounded-lg bg-white focus:outline-none focus:border-primary"

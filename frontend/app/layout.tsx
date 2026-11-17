@@ -3,6 +3,7 @@ import Providers from "@/components/Providers";
 import LenisProvider from "@/app/providers/LenisProvider";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { getFooterData } from "@/lib/footer-data";
 
 export const metadata: Metadata = {
   title: {
@@ -45,16 +46,17 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const footer = await getFooterData();
   return (
     <html lang="tr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-bg-primary text-text-primary font-body">
         <LenisProvider>
-          <Providers>{children}</Providers>
+          <Providers initialSettings={footer.settings} footerCatalog={footer.catalog}>{children}</Providers>
           <Toaster position="top-right" richColors />
         </LenisProvider>
       </body>

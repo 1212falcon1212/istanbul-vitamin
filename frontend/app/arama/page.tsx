@@ -22,6 +22,9 @@ export default function AramaPage({ searchParams }: AramaPageProps) {
 
   const [query, setQuery] = useState(initialQuery);
   const [inputValue, setInputValue] = useState(initialQuery);
+  const [sort, setSort] = useState("relevance");
+  const [brand, setBrand] = useState("");
+  const [inStock, setInStock] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(!!initialQuery);
@@ -51,10 +54,15 @@ export default function AramaPage({ searchParams }: AramaPageProps) {
     search();
   }, [query]);
 
+  const brands = Array.from(new Set(products.map(p => p.brand?.name).filter((name): name is string => !!name)));
+  const visibleProducts = products.filter(p => (!brand || p.brand?.name === brand) && (!inStock || p.stock > 0));
+  if (sort !== "relevance") visibleProducts.sort((a, b) => sort === "price_asc" ? a.price - b.price : b.price - a.price);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (trimmed) {
+      setBrand("");
       setQuery(trimmed);
       router.replace(`/arama?q=${encodeURIComponent(trimmed)}`, {
         scroll: false,
@@ -67,23 +75,22 @@ export default function AramaPage({ searchParams }: AramaPageProps) {
       <Header />
 
       <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 mobile-product-rows">
           <Breadcrumb items={[{ label: "Arama" }]} />
 
-          <h1 className="font-display text-3xl text-text-primary mb-6">
-            Urun Ara
+          <h1 className="font-display text-xl lg:text-3xl text-text-primary mb-3">
+            Ürün Ara
           </h1>
 
           {/* Search form */}
-          <form onSubmit={handleSubmit} className="max-w-2xl mb-8">
+          <form onSubmit={handleSubmit} className="max-w-2xl mb-4">
             <div className="relative">
               <input
                 type="search"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Urun, marka veya kategori ara..."
+                placeholder="Ürün, marka veya kategori ara..."
                 className="w-full h-12 pl-5 pr-14 rounded-full border border-border bg-card-bg text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors text-base"
-                autoFocus
               />
               <button
                 type="submit"
@@ -115,14 +122,19 @@ export default function AramaPage({ searchParams }: AramaPageProps) {
             </div>
           ) : searched ? (
             <>
+              {products.length > 0 && <div className="search-listing-controls">
+                <select aria-label="Markaya göre filtrele" value={brand} onChange={e => setBrand(e.target.value)}><option value="">Tüm markalar</option>{brands.map(name => <option key={name} value={name}>{name}</option>)}</select>
+                <select aria-label="Arama sonuçlarını sırala" value={sort} onChange={e => setSort(e.target.value)}><option value="relevance">Önerilen sıralama</option><option value="price_asc">Fiyat: Artan</option><option value="price_desc">Fiyat: Azalan</option></select>
+                <button type="button" aria-pressed={inStock} onClick={() => setInStock(!inStock)}>Stoktakiler {inStock ? "✓" : ""}</button>
+              </div>}
               {query && (
                 <p className="text-sm text-text-secondary mb-6">
-                  &quot;{query}&quot; icin{" "}
-                  <strong>{products.length}</strong> sonuc bulundu.
+                  &quot;{query}&quot; için{" "}
+                  <strong>{visibleProducts.length}</strong> sonuç bulundu.
                 </p>
               )}
 
-              {products.length === 0 ? (
+              {visibleProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -146,7 +158,7 @@ export default function AramaPage({ searchParams }: AramaPageProps) {
                   </p>
                 </div>
               ) : (
-                <ProductGrid products={products} />
+                <ProductGrid products={visibleProducts} />
               )}
             </>
           ) : (
