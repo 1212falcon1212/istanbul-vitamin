@@ -32,12 +32,12 @@ func NewCancellationService(db *gorm.DB, orderSvc *OrderService, arasSvc *aras.S
 
 // validReasons müşteri formundan kabul edilen neden kodları.
 var validReasons = map[string]bool{
-	"wrong_item":        true,
-	"damaged":           true,
-	"no_longer_needed":  true,
-	"size_color":        true,
-	"late_delivery":     true,
-	"other":             true,
+	"wrong_item":       true,
+	"damaged":          true,
+	"no_longer_needed": true,
+	"size_color":       true,
+	"late_delivery":    true,
+	"other":            true,
 }
 
 // RequestByCustomer müşterinin yeni iptal/iade talebi açar.
@@ -96,6 +96,7 @@ func (s *CancellationService) RequestByCustomer(userID, orderID uint64, ctype, r
 		OrderID:           orderID,
 		Type:              ctype,
 		Status:            "requested",
+		RefundStatus:      "pending",
 		Reason:            reason,
 		Note:              strings.TrimSpace(note),
 		RequestedByUserID: &userID,
@@ -125,8 +126,8 @@ func (s *CancellationService) autoApprovePendingCancel(cancellation *models.Orde
 	}
 	now := time.Now()
 	updates := map[string]interface{}{
-		"status":      "completed",
-		"decided_at":  &now,
+		"status":     "completed",
+		"decided_at": &now,
 	}
 	// Refund yalnızca PaymentID set ise (yani PayTR ödemesi tamamlanmışsa).
 	if strings.TrimSpace(order.PaymentID) != "" && order.Total > 0 {
@@ -151,7 +152,7 @@ func (s *CancellationService) autoApprovePendingCancel(cancellation *models.Orde
 
 // ApproveByAdmin admin onayı ile akışı tamamlar.
 //   - cancel + shipped     → Aras CancelDispatch dene; başarılıysa status=cancelled, refund tetikle.
-//                            Başarısız (999) ise status="completed" ama aras_cancel_succeeded=false; refund yine yap.
+//     Başarısız (999) ise status="completed" ama aras_cancel_succeeded=false; refund yine yap.
 //   - return + delivered  → Aras iade gönderimi oluştur (CreateReturnShipment), refund tetikle, status=refunded.
 func (s *CancellationService) ApproveByAdmin(adminID, cancellationID uint64) error {
 	var cancellation models.OrderCancellation

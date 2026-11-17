@@ -33,7 +33,7 @@ export default function KartlarimPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<SavedCard[]>("/saved-cards");
+      const res = await api.get<SavedCard[]>("/cards");
       setCards(Array.isArray(res.data) ? res.data : []);
     } catch {
       setError("Kartlar yuklenirken bir hata olustu.");
@@ -49,7 +49,7 @@ export default function KartlarimPage() {
   async function handleDelete(id: number) {
     setDeleting(true);
     try {
-      await api.delete(`/saved-cards/${id}`);
+      await api.delete(`/cards/${id}`);
       setDeleteConfirmId(null);
       await fetchCards();
     } catch {

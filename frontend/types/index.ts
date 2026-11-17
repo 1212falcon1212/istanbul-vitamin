@@ -169,6 +169,10 @@ export interface Order {
   aras_cancel_attempted_at?: string;
   aras_cancel_succeeded?: boolean | null;
   payment_method: "credit_card" | "bank_transfer";
+  payment_status?: "pending" | "review" | "paid" | "test";
+  payment_card_last_four?: string;
+  receipt_submitted_at?: string;
+  payment_confirmed_at?: string;
   customer_note?: string;
   bizimhesap_invoice_id?: string;
   invoice_number?: string;

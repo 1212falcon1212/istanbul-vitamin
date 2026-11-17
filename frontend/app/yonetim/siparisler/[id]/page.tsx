@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import OrderPayment from "@/components/orders/OrderPayment";
 import Spinner from "@/components/ui/Spinner";
 import ArasShipmentPanel from "./ArasShipmentPanel";
 import { api } from "@/lib/api";
@@ -478,6 +479,7 @@ export default function OrderDetailPage() {
         </aside>
       </div>
       {printOpen && <OrderPrintModal order={order} onClose={() => setPrintOpen(false)} />}
+    <OrderPayment order={order} admin onChange={fetchOrder} />
     </AdminShell>
   );
 }

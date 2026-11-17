@@ -72,6 +72,23 @@ func (s *SettingService) GetByGroup(group string) ([]models.Setting, error) {
 // Başarılı olursa ilgili cache key'leri temizlenir.
 func (s *SettingService) Update(settings []models.Setting) error {
 	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var rows []models.Setting
+		if err := tx.Find(&rows).Error; err != nil {
+			return err
+		}
+		merged := map[string]string{}
+		for _, row := range rows {
+			merged[row.Key] = row.Value
+		}
+		for i := range settings {
+			if settings[i].Key == "bank_transfer_iban" {
+				settings[i].Value = strings.ToUpper(strings.Join(strings.Fields(settings[i].Value), ""))
+			}
+			merged[settings[i].Key] = settings[i].Value
+		}
+		if merged["bank_transfer_enabled"] == "true" && !BankTransferReady(merged) {
+			return errors.New("Havale için geçerli TR IBAN, banka adı ve hesap sahibi gereklidir")
+		}
 		for _, setting := range settings {
 			if setting.Key == "" {
 				continue
@@ -232,4 +249,23 @@ func (s *SettingService) BizimhesapConfig() (bizimhesap.Config, error) {
 
 func IsSecretSetting(key string) bool {
 	return secretKeys[key] || key == "bizimhesap.firm_id" || strings.Contains(key, "secret") || strings.Contains(key, "token") || strings.Contains(key, "password") || strings.HasSuffix(key, "api_key")
+}
+
+// BankTransferReady validates the Turkish IBAN checksum and required account details.
+func BankTransferReady(settings map[string]string) bool {
+	iban := strings.ToUpper(strings.Join(strings.Fields(settings["bank_transfer_iban"]), ""))
+	if len(iban) != 26 || !strings.HasPrefix(iban, "TR") || strings.TrimSpace(settings["bank_transfer_bank"]) == "" || strings.TrimSpace(settings["bank_transfer_holder"]) == "" {
+		return false
+	}
+	for _, c := range iban[2:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	digits := iban[4:] + "2927" + iban[2:4]
+	remainder := 0
+	for _, c := range digits {
+		remainder = (remainder*10 + int(c-'0')) % 97
+	}
+	return remainder == 1
 }

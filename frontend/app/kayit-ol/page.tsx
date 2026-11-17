@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import GoogleSignIn from "@/components/auth/GoogleSignIn";
 import AuthShell from "@/components/auth/AuthShell";
 import Spinner from "@/components/ui/Spinner";
 
@@ -241,6 +242,7 @@ export default function KayitOlPage() {
           &apos;nı kabul etmiş olursun.
         </p>
       </form>
+      <GoogleSignIn />
     </AuthShell>
   );
 }

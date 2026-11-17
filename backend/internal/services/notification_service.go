@@ -102,14 +102,14 @@ func (s *NotificationService) expand(e models.NotificationEvent) error {
 			return nil
 		}
 		var order models.Order
-		if err := tx.Preload("User").First(&order, e.OrderID).Error; err != nil {
+		if err := tx.Preload("User").Preload("Items").First(&order, e.OrderID).Error; err != nil {
 			return err
 		}
 		title, body := integrations.EventCopy(e.Kind)
 		// Marketplace buyers are not site notification recipients. Guest orders lack a verified email field.
 		if title != "" && order.Source == "web" && order.UserID != nil && order.User != nil && order.User.IsActive {
 			path := fmt.Sprintf("/hesabim/siparisler/%d", order.ID)
-			subject, markup := integrations.OrderEventEmail(e.Kind, integrations.OrderMail{Number: order.OrderNumber, Name: order.ShippingFirstName, Company: order.CargoCompany, Tracking: order.TrackingNumber, Total: order.Total, URL: strings.TrimRight(s.Config.SiteURL, "/") + path})
+			subject, markup := integrations.OrderEventEmail(e.Kind, integrations.OrderMailFromOrder(order, s.Config.SiteURL))
 			if e.Kind == "refund_completed" {
 				var c models.OrderCancellation
 				if err := tx.First(&c, e.ReferenceID).Error; err != nil {

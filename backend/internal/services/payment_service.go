@@ -68,10 +68,38 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 		return nil, errors.New("sipariş bilgileri alınırken bir hata oluştu")
 	}
 
+	if order.PaymentMethod != "credit_card" {
+		return nil, errors.New("bu sipariş için kart ödemesi kullanılamaz")
+	}
+
 	if order.Status != "pending" {
 		return nil, errors.New("bu sipariş için ödeme yapılamaz")
 	}
 
+	// Keep only masked display information; never persist the full PAN or CVV.
+	digits := strings.NewReplacer(" ", "", "-", "").Replace(cardData.CardNumber)
+	lastFour := ""
+	if len(digits) >= 12 && len(digits) <= 19 {
+		valid := true
+		for _, c := range digits {
+			if c < '0' || c > '9' {
+				valid = false
+			}
+		}
+		if valid {
+			lastFour = digits[len(digits)-4:]
+		}
+	}
+	if cardData.CardToken != "" && order.UserID != nil {
+		var saved models.SavedCard
+		if err := s.db.Where("user_id = ? AND card_token = ?", *order.UserID, cardData.CardToken).First(&saved).Error; err != nil {
+			return nil, errors.New("kayıtlı kart bulunamadı")
+		}
+		lastFour = saved.LastFour
+	}
+	if err := s.db.Model(&order).Update("payment_card_last_four", lastFour).Error; err != nil {
+		return nil, err
+	}
 	merchantID := s.cfg.PayTRMerchantID
 	merchantKey := s.cfg.PayTRMerchantKey
 	merchantSalt := s.cfg.PayTRMerchantSalt
@@ -86,7 +114,7 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 		}
 		devPaymentID := fmt.Sprintf("DEV-%d", time.Now().Unix())
 		err := s.db.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Model(&order).Update("payment_id", devPaymentID).Error; err != nil {
+			if err := tx.Model(&order).Updates(map[string]interface{}{"payment_id": devPaymentID, "payment_status": "test"}).Error; err != nil {
 				return err
 			}
 			history := models.OrderStatusHistory{
@@ -250,7 +278,7 @@ func (s *PaymentService) HandleCallback(data map[string]string) error {
 		return s.db.Transaction(func(tx *gorm.DB) error {
 			// Status değiştirmiyoruz; sipariş pending kalır, admin kargoya verince
 			// 'shipped'e geçer. Sadece PaymentID ve history kaydı ekleriz.
-			if err := tx.Model(&order).Update("payment_id", data["payment_id"]).Error; err != nil {
+			if err := tx.Model(&order).Updates(map[string]interface{}{"payment_id": data["payment_id"], "payment_status": "paid", "payment_confirmed_at": time.Now()}).Error; err != nil {
 				return errors.New("ödeme bilgisi kaydedilirken bir hata oluştu")
 			}
 

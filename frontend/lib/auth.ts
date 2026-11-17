@@ -20,6 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  googleLogin: (credential: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   adminLogin: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await Promise.all(tasks);
-    setIsLoading(false);
+    if (version === sessionVersion.current) setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -138,6 +139,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+    if (res.data) {
+      ++sessionVersion.current;
+      localStorage.setItem(USER_TOKEN, res.data.token);
+      localStorage.setItem(USER_ROLE, "user");
+      if (res.data.user) setUser(res.data.user);
+      await mergeGuestCart();
+      await syncPushAccount().catch(() => {});
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth-changed"));
+      }
+    }
+  };
+
+  const googleLogin = async (credential: string) => {
+    const res = await api.post<AuthResponse>("/auth/google", { credential });
     if (res.data) {
       ++sessionVersion.current;
       localStorage.setItem(USER_TOKEN, res.data.token);
@@ -213,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: !!admin,
         login,
+        googleLogin,
         adminLogin,
         register,
         logout,

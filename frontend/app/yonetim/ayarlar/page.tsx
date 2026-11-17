@@ -110,6 +110,22 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     ],
   },
   {
+    id: "google_login",
+    label: "Google ile Giriş",
+    fields: [{key:"google_login_client_id", label:"Google Web OAuth Client ID", type:"text", hint:"Google Cloud → Google Auth Platform → Clients. Authorized JavaScript origins alanına sitenin adresini ekleyin. Boş bırakılırsa Google girişi kapalıdır."}],
+  },
+  {
+    id: "havale",
+    label: "Havale / EFT",
+    fields: [
+      { key: "bank_transfer_enabled", label: "Havale ile ödeme aktif", type: "checkbox" },
+      { key: "bank_transfer_bank", label: "Banka adı", type: "text" },
+      { key: "bank_transfer_holder", label: "Hesap sahibi / Firma unvanı", type: "text" },
+      { key: "bank_transfer_iban", label: "IBAN", type: "text", hint: "TR ile başlayan 26 karakterlik IBAN." },
+      { key: "bank_transfer_note", label: "Ödeme açıklaması", type: "textarea" },
+    ],
+  },
+  {
     id: "shipping",
     label: "Kargo Ücreti",
     fields: [

@@ -5,6 +5,7 @@ import (
 )
 
 type User struct {
+	GoogleSubject     *string    `gorm:"type:varchar(255);uniqueIndex" json:"-"`
 	ID                uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
 	Email             string     `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	PasswordHash      string     `gorm:"type:varchar(255);not null" json:"-"`

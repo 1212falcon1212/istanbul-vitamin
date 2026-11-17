@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { safeAuthRedirect } from "@/lib/auth-redirect";
 import { useAuth } from "@/lib/auth";
+import GoogleSignIn from "@/components/auth/GoogleSignIn";
 import AuthShell from "@/components/auth/AuthShell";
 import Spinner from "@/components/ui/Spinner";
 
@@ -150,27 +151,7 @@ export default function GirisYapPage({ searchParams }: GirisYapPageProps) {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      {/* Social (disabled placeholders) */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          disabled
-          title="Yakında"
-          className="h-11 rounded-xl border border-border bg-white text-sm text-text-primary flex items-center justify-center gap-2 hover:border-primary/40 transition disabled:opacity-60"
-        >
-          <GoogleIcon />
-          Google
-        </button>
-        <button
-          type="button"
-          disabled
-          title="Yakında"
-          className="h-11 rounded-xl border border-border bg-white text-sm text-text-primary flex items-center justify-center gap-2 hover:border-primary/40 transition disabled:opacity-60"
-        >
-          <FacebookIcon />
-          Facebook
-        </button>
-      </div>
+      <GoogleSignIn />
     </AuthShell>
   );
 }

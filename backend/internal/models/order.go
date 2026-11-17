@@ -3,12 +3,12 @@ package models
 import "time"
 
 type Order struct {
-	ID                 uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	OrderNumber        string     `gorm:"type:varchar(20);uniqueIndex;not null" json:"order_number"`
-	UserID             *uint64    `gorm:"index" json:"user_id"`
-	Source             string     `gorm:"type:enum('web','trendyol','hepsiburada');default:'web';index" json:"source"`
-	MarketplaceOrderID string     `gorm:"type:varchar(100)" json:"marketplace_order_id,omitempty"`
-	Status             string     `gorm:"type:enum('pending','shipped','delivered','cancelled','refunded');default:'pending';index" json:"status"`
+	ID                 uint64  `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderNumber        string  `gorm:"type:varchar(20);uniqueIndex;not null" json:"order_number"`
+	UserID             *uint64 `gorm:"index" json:"user_id"`
+	Source             string  `gorm:"type:enum('web','trendyol','hepsiburada');default:'web';index" json:"source"`
+	MarketplaceOrderID string  `gorm:"type:varchar(100)" json:"marketplace_order_id,omitempty"`
+	Status             string  `gorm:"type:enum('pending','shipped','delivered','cancelled','refunded');default:'pending';index" json:"status"`
 
 	// Prices
 	Subtotal       float64 `gorm:"type:decimal(10,2);not null" json:"subtotal"`
@@ -50,7 +50,7 @@ type Order struct {
 	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
 
 	// Aras Kargo (SOAP entegrasyonu)
-	ArasIntegrationCode   string     `gorm:"type:varchar(32);uniqueIndex" json:"aras_integration_code,omitempty"`
+	ArasIntegrationCode   string     `gorm:"type:varchar(32);uniqueIndex;default:null" json:"aras_integration_code,omitempty"`
 	ArasStatusCode        *int       `gorm:"type:tinyint" json:"aras_status_code,omitempty"`
 	ArasStatusText        string     `gorm:"type:varchar(64)" json:"aras_status_text,omitempty"`
 	ArasStatusCheckedAt   *time.Time `json:"aras_status_checked_at,omitempty"`
@@ -61,6 +61,11 @@ type Order struct {
 	// Payment
 	PaymentMethod string `gorm:"type:enum('credit_card','bank_transfer');default:'credit_card'" json:"payment_method"`
 	PaymentID     string `gorm:"type:varchar(100)" json:"payment_id,omitempty"`
+
+	PaymentStatus       string     `gorm:"type:varchar(24);default:'pending'" json:"payment_status"`
+	PaymentCardLastFour string     `gorm:"type:varchar(4)" json:"payment_card_last_four,omitempty"`
+	ReceiptSubmittedAt  *time.Time `json:"receipt_submitted_at,omitempty"`
+	PaymentConfirmedAt  *time.Time `json:"payment_confirmed_at,omitempty"`
 
 	// Invoice
 	BizimHesapInvoiceID string `gorm:"type:varchar(100)" json:"bizimhesap_invoice_id,omitempty"`
@@ -77,8 +82,8 @@ type Order struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// Relations
-	User          *User              `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	Items         []OrderItem        `gorm:"foreignKey:OrderID" json:"items,omitempty"`
+	User          *User                `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Items         []OrderItem          `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	StatusHistory []OrderStatusHistory `gorm:"foreignKey:OrderID" json:"status_history,omitempty"`
 }
 
@@ -120,4 +125,12 @@ type OrderStatusHistory struct {
 
 func (OrderStatusHistory) TableName() string {
 	return "order_status_history"
+}
+
+// Receipt data is private and served only through authenticated order endpoints.
+type OrderReceipt struct {
+	OrderID     uint64 `gorm:"primaryKey;autoIncrement:false"`
+	Data        []byte `gorm:"type:mediumblob;not null" json:"-"`
+	ContentType string `gorm:"type:varchar(50)"`
+	UpdatedAt   time.Time
 }

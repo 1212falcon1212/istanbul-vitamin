@@ -1,5 +1,6 @@
 "use client";
 
+import { useSettings } from "@/lib/settings";
 import { readConsent, trackPaidPurchase } from "@/lib/marketing";
 import { useEffect, use } from "react";
 import Link from "next/link";
@@ -13,6 +14,7 @@ interface BasariliPageProps {
 
 export default function BasariliPage({ searchParams }: BasariliPageProps) {
   const sp = use(searchParams);
+  const { settings } = useSettings();
   const orderNumber = typeof sp.order === "string" ? sp.order : "";
 
   useEffect(() => {
@@ -80,6 +82,14 @@ export default function BasariliPage({ searchParams }: BasariliPageProps) {
             </div>
 
             <CardContent className="p-6 md:p-8 pt-6">
+              {sp.method === "bank_transfer" && <div className="mb-6 space-y-2 rounded-xl border p-4">
+                <h2 className="font-semibold">Havale / EFT ödemeniz bekleniyor</h2>
+                <p>{settings.bank_transfer_bank} — {settings.bank_transfer_holder}</p>
+                <p className="break-all font-mono">{settings.bank_transfer_iban}</p>
+                <p>Havale açıklaması: {orderNumber}</p>
+                <p>{settings.bank_transfer_note}</p>
+                <p>Ödemeniz kontrol edildikten sonra siparişiniz hazırlanacaktır.</p>
+              </div>}
               <ul className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                 {[
                   { label: "Onay E-Postası", desc: "Birkaç dk içinde" },

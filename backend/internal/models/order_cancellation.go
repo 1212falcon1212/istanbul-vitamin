@@ -15,7 +15,7 @@ type OrderCancellation struct {
 	Reason             string     `gorm:"type:varchar(80);not null" json:"reason"`
 	Note               string     `gorm:"type:text" json:"note,omitempty"`
 	RefundAmount       *float64   `gorm:"type:decimal(10,2)" json:"refund_amount,omitempty"`
-	RefundStatus       string     `gorm:"type:enum('pending','processing','completed','failed')" json:"refund_status,omitempty"`
+	RefundStatus       string     `gorm:"type:enum('pending','processing','completed','failed');default:'pending'" json:"refund_status,omitempty"`
 	PayTRRefundID      string     `gorm:"column:paytr_refund_id;type:varchar(64)" json:"paytr_refund_id,omitempty"`
 	ArasReturnTracking string     `gorm:"type:varchar(100)" json:"aras_return_tracking,omitempty"`
 	RequestedByUserID  *uint64    `gorm:"index:idx_user_cancel,priority:1" json:"requested_by_user_id,omitempty"`

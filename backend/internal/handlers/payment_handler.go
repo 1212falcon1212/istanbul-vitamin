@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/istanbulvitamin/backend/internal/config"
 	"github.com/istanbulvitamin/backend/internal/database"
+	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/services"
 	"github.com/istanbulvitamin/backend/internal/utils"
 )
@@ -22,6 +23,7 @@ func NewPaymentHandler(cfg *config.Config) *PaymentHandler {
 }
 
 type startPaymentRequest struct {
+	SavedCardID    uint64 `json:"saved_card_id"`
 	OrderID        uint64 `json:"order_id"`
 	CardNumber     string `json:"card_number"`
 	ExpMonth       string `json:"exp_month"`
@@ -44,6 +46,18 @@ func (h *PaymentHandler) StartPayment(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Sipariş ID zorunludur")
 	}
 
+	userID, _ := c.Locals("userID").(uint64)
+	var owned models.Order
+	if userID == 0 || database.DB.Where("id = ? AND user_id = ?", req.OrderID, userID).First(&owned).Error != nil {
+		return utils.NotFound(c, "Sipariş")
+	}
+	if req.SavedCardID != 0 {
+		var card models.SavedCard
+		if database.DB.Where("id = ? AND user_id = ?", req.SavedCardID, userID).First(&card).Error != nil {
+			return utils.NotFound(c, "Kart")
+		}
+		req.CardToken = card.CardToken
+	}
 	// Kaydedilmis kart ile odeme yapilmiyorsa kart bilgileri zorunlu
 	if req.CardToken == "" {
 		req.CardNumber = strings.TrimSpace(req.CardNumber)

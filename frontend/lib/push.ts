@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { PUSH_CHANGED } from "./push-preferences";
 export type PushConfig = {
   enabled: boolean;
   apiKey: string;
@@ -49,6 +50,7 @@ async function register(config: PushConfig) {
   });
   await api.post("/push/subscribe", {device: pushDevice(true), token, marketing:localStorage.getItem("iv-push-marketing")==="1"});
   localStorage.setItem("iv-push-enabled", "1");
+  window.dispatchEvent(new Event(PUSH_CHANGED));
 }
 export async function enablePush(config: PushConfig) {
   if (!config.enabled) throw new Error("Bildirimler henüz kullanılamıyor.");
@@ -78,10 +80,10 @@ export async function refreshPush(config: PushConfig) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device }),
     });
-    if (r.ok) localStorage.removeItem("iv-push-enabled");
+    if (r.ok) { localStorage.removeItem("iv-push-enabled"); window.dispatchEvent(new Event(PUSH_CHANGED)); }
   }
 }
-export async function disablePush(config: PushConfig) {
+export async function disablePush(config: PushConfig | null) {
   const device = pushDevice();
   if (device) {
     const r = await fetch(`${API}/push/unsubscribe`, {
@@ -92,9 +94,27 @@ export async function disablePush(config: PushConfig) {
     if (!r.ok) throw new Error("Bildirim kaydı kaldırılamadı. Tekrar deneyin.");
   }
   localStorage.removeItem("iv-push-enabled");
-  const { deleteToken } = await import("@firebase/messaging");
-  await deleteToken(await messaging(config));
+  window.dispatchEvent(new Event(PUSH_CHANGED));
+  // Server unsubscription is authoritative even if local Firebase cleanup fails.
+  if (config?.enabled) {
+    try { const { deleteToken } = await import("@firebase/messaging"); await deleteToken(await messaging(config)); } catch { /* Subscription is already removed from our server. */ }
+  }
 }
 
 export async function detachPush() { const device=pushDevice(); if(device) await api.post("/push/unsubscribe",{device}); }
 export async function syncPushAccount() { const cfg=await pushConfig(); if(cfg?.enabled) await refreshPush(cfg); }
+
+export async function setPushMarketing(value: boolean, config: PushConfig | null) {
+ const previous=localStorage.getItem("iv-push-marketing");
+ localStorage.setItem("iv-push-marketing",value?"1":"0");
+ try {
+  if(localStorage.getItem("iv-push-enabled")==="1") {
+   if(!config?.enabled) throw new Error("Bildirim servisine şu anda erişilemiyor. Tekrar deneyin.");
+   await refreshPush(config);
+  }
+  window.dispatchEvent(new Event(PUSH_CHANGED));
+ } catch(e) {
+  if(previous===null) localStorage.removeItem("iv-push-marketing");else localStorage.setItem("iv-push-marketing",previous);
+  throw e;
+ }
+}

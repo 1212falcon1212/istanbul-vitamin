@@ -179,7 +179,7 @@ func describeTestResult(ok bool, errMsg string) string {
 // Public settings are explicitly allowlisted; new integration keys stay private.
 func publicSettings(all map[string]string) map[string]string {
 	out := map[string]string{}
-	for _, key := range strings.Fields("homepage_content top_header_mode top_header_image top_header_image_mobile top_header_image_alt site_name site_description site_logo_url site_logo_url_dark site_favicon_url top_header_enabled top_header_text top_header_link phone email address city town whatsapp_number instagram facebook twitter youtube meta_title meta_description shipping_fee free_shipping_threshold min_free_shipping google_analytics_id google_ads_id google_ads_conversion_label google_tracking_enabled") {
+	for _, key := range strings.Fields("google_login_client_id bank_transfer_enabled bank_transfer_bank bank_transfer_holder bank_transfer_iban bank_transfer_note homepage_content top_header_mode top_header_image top_header_image_mobile top_header_image_alt site_name site_description site_logo_url site_logo_url_dark site_favicon_url top_header_enabled top_header_text top_header_link phone email address city town whatsapp_number instagram facebook twitter youtube meta_title meta_description shipping_fee free_shipping_threshold min_free_shipping google_analytics_id google_ads_id google_ads_conversion_label google_tracking_enabled") {
 		if value, ok := all[key]; ok {
 			out[key] = value
 		}

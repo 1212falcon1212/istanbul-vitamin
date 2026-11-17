@@ -22,6 +22,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&VariationValue{},
 		&ProductVariantValue{},
 		&Order{},
+		&OrderReceipt{},
 		&OrderItem{},
 		&OrderStatusHistory{},
 		&OrderCancellation{},

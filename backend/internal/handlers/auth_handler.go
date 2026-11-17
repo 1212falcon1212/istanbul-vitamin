@@ -445,3 +445,22 @@ func (h *AuthHandler) ResendVerification(c *fiber.Ctx) error {
 	}
 	return utils.SuccessMessageResponse(c, "Doğrulama e-postası gönderildi")
 }
+
+func (h *AuthHandler) GoogleLogin(c *fiber.Ctx) error {
+	var req struct {
+		Credential string `json:"credential"`
+	}
+	if c.BodyParser(&req) != nil || len(req.Credential) > 16384 {
+		return utils.BadRequest(c, "Geçersiz Google kimliği")
+	}
+	settings, err := services.NewSettingService(database.DB).GetAll()
+	if err != nil || settings["google_login_client_id"] == "" {
+		return utils.BadRequest(c, "Google girişi henüz yapılandırılmamış")
+	}
+	token, user, err := h.service.GoogleLogin(c.UserContext(), req.Credential, settings["google_login_client_id"])
+	if err != nil {
+		return utils.BadRequest(c, "Google girişi tamamlanamadı. Bu e-posta zaten kayıtlıysa mevcut şifrenizle giriş yapın.")
+	}
+	setAuthCookie(c, token, h.cfg.AppEnv == "production", 24)
+	return utils.SuccessResponse(c, fiber.Map{"token": token, "user": user})
+}

@@ -210,6 +210,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	})
 
 	auth.Post("/register", authLimiter, authHandler.Register)
+	auth.Post("/google", authLimiter, authHandler.GoogleLogin)
 	auth.Post("/login", authLimiter, authHandler.Login)
 	auth.Post("/admin/login", authLimiter, authHandler.AdminLogin)
 	auth.Post("/refresh", authHandler.RefreshToken)
@@ -324,6 +325,8 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	// })
 	api.Get("/orders", requireAuth, orderHandler.List)
 	api.Get("/orders/:id", requireAuth, orderHandler.GetByID)
+	api.Post("/orders/:id/receipt", requireAuth, orderHandler.UploadReceipt)
+	api.Get("/orders/:id/receipt", requireAuth, orderHandler.DownloadReceipt)
 	api.Get("/tracking/purchase/:number", requireAuth, orderHandler.PurchaseMeasurement)
 	api.Post("/orders", requireAuth, orderHandler.Create)
 
@@ -399,6 +402,8 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	// Admin - Orders
 	admin.Get("/orders", orderHandler.AdminList)
 	admin.Get("/orders/:id", orderHandler.AdminGetByID)
+	admin.Get("/orders/:id/receipt", orderHandler.AdminDownloadReceipt)
+	admin.Post("/orders/:id/confirm-transfer", orderHandler.ConfirmTransfer)
 	admin.Put("/orders/:id/status", orderHandler.UpdateStatus)
 	admin.Post("/orders/:id/invoice/regenerate", orderHandler.RegenerateInvoice)
 

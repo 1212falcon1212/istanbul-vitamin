@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import {
   formatPrice,
@@ -24,6 +25,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 ];
 
 export default function SiparislerPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -158,7 +160,7 @@ export default function SiparislerPage() {
                     key={order.id}
                     className="hover:bg-primary-soft/20 transition-colors cursor-pointer"
                     onClick={() =>
-                      (window.location.href = `/hesabim/siparisler/${order.id}`)
+                      router.push(`/hesabim/siparisler/${order.id}`)
                     }
                   >
                     <td className="px-5 py-4 text-sm font-medium text-primary">

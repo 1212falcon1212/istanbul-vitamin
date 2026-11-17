@@ -9,6 +9,7 @@ import {
   refreshPush,
   type PushConfig,
 } from "@/lib/push";
+import { PUSH_CHANGED } from "@/lib/push-preferences";
 import { toast } from "sonner";
 type InstallEvent = Event & {
   prompt(): Promise<void>;
@@ -51,6 +52,8 @@ export default function PWA() {
       setStandalone(true);
       setOpen(false);
     };
+    const syncPush = () => {setSubscribed(localStorage.getItem("iv-push-enabled")==="1");setMarketing(localStorage.getItem("iv-push-marketing")==="1");};
+    window.addEventListener(PUSH_CHANGED,syncPush);
     const reopen = () => setOpen(true);
     window.addEventListener("beforeinstallprompt", offer);
     window.addEventListener("appinstalled", installed);
@@ -85,6 +88,7 @@ export default function PWA() {
       if (cfg?.enabled) void refreshPush(cfg).catch(() => {});
     });
     return () => {
+      window.removeEventListener(PUSH_CHANGED,syncPush);
       window.removeEventListener("beforeinstallprompt", offer);
       window.removeEventListener("appinstalled", installed);
       window.removeEventListener("iv-pwa-settings", reopen);

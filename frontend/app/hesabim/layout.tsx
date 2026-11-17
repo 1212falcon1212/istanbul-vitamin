@@ -74,6 +74,7 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {href:"/hesabim/bildirimler",label:"Bildirimler",icon:<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17H5l2-3V9a5 5 0 0110 0v5l2 3h-4m-6 3h6" /></svg>},
 ] as const;
 
 export default function HesabimLayout({
@@ -88,14 +89,14 @@ export default function HesabimLayout({
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.replace("/giris-yap");
+      router.replace(`/giris-yap?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     // Admin hesabiyla girildiyse hesabim yerine yonetim paneline gonder.
     if (admin && !user) {
       router.replace("/yonetim");
     }
-  }, [isLoading, isAuthenticated, admin, user, router]);
+  }, [isLoading, isAuthenticated, admin, user, router, pathname]);
 
   if (isLoading || !isAuthenticated || !user) {
     return (

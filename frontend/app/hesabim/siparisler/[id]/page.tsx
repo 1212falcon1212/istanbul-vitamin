@@ -11,6 +11,7 @@ import {
   getOrderStatusColor,
   cn,
 } from "@/lib/utils";
+import OrderPayment from "@/components/orders/OrderPayment";
 import Spinner from "@/components/ui/Spinner";
 import CargoTimeline from "@/components/cargo/CargoTimeline";
 import CancellationModal from "@/components/cargo/CancellationModal";
@@ -112,6 +113,8 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           {getOrderStatusLabel(order.status)}
         </span>
       </div>
+
+      <OrderPayment order={order} onChange={loadOrder} />
 
       {/* Status timeline */}
       {!isCancelledOrRefunded && (
@@ -231,7 +234,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               kind: "success",
               text:
                 cancelModal === "cancel" && order.status === "pending"
-                  ? "Siparişiniz iptal edildi. Tutar otomatik iade edildi."
+                  ? "Siparişiniz iptal edildi. Ödeme ve iade durumunu talep geçmişinizden takip edebilirsiniz."
                   : "Talebiniz alındı. Onayladığımızda size bilgi vereceğiz.",
             });
             loadOrder();

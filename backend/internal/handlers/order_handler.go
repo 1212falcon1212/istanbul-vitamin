@@ -169,6 +169,15 @@ func (h *OrderHandler) Create(c *fiber.Ctx) error {
 		req.PaymentMethod = "credit_card"
 	}
 
+	if req.PaymentMethod != "credit_card" && req.PaymentMethod != "bank_transfer" {
+		return utils.BadRequest(c, "Geçersiz ödeme yöntemi")
+	}
+	if req.PaymentMethod == "bank_transfer" {
+		settings, err := services.NewSettingService(database.DB).GetAll()
+		if err != nil || settings["bank_transfer_enabled"] != "true" || !services.BankTransferReady(settings) {
+			return utils.BadRequest(c, "Havale şu anda kullanılamıyor")
+		}
+	}
 	order := &models.Order{
 		UserID: &userID,
 

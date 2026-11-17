@@ -45,6 +45,7 @@ export default function OdemePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { cartId, items, subtotal, updateItem, removeItem } = useCart();
   const { settings } = useSettings();
+  const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const logoUrl = settings.site_logo_url
     ? resolveImageUrl(settings.site_logo_url)
     : "";
@@ -248,7 +249,7 @@ export default function OdemePage() {
           billing_district: billing.district,
           billing_address: billingAddressLine,
           invoice_type: "individual",
-          payment_method: "credit_card",
+          payment_method: paymentMethod,
           customer_note: "",
           installment_count: 1,
           shipping_method: selectedShipping,
@@ -260,11 +261,26 @@ export default function OdemePage() {
         rawOrder && "order" in rawOrder ? rawOrder.order : (rawOrder as OrderPayload | undefined);
 
       if (order?.id) {
-        await api.post("/payments/start", {
+        if (paymentMethod === "bank_transfer") {
+          router.push(`/odeme/basarili?order=${encodeURIComponent(order.order_number)}&method=bank_transfer`);
+          return;
+        }
+        const [expMonth, expYear] = paymentData.expiry.split("/").map(value => value.trim());
+        const result = await api.post<{payment: {redirect_url?: string}}>("/payments/start", {
           order_id: order.id,
-          ...paymentData,
-          installment_count: 1,
+          card_number: paymentData.card_number,
+          exp_month: expMonth,
+          exp_year: expYear,
+          cvv: paymentData.cvv,
+          card_holder_name: paymentData.holder_name,
+          saved_card_id: paymentData.saved_card_id,
+          save_card: paymentData.save_card,
+          installment: 1,
         });
+        if (result.data?.payment.redirect_url) {
+          window.location.assign(result.data.payment.redirect_url);
+          return;
+        }
         router.push(`/odeme/basarili?order=${order.order_number}`);
       } else {
         throw new Error("Sipariş oluşturulamadı");
@@ -778,11 +794,24 @@ export default function OdemePage() {
                   </button>
                 </div>
 
-                <PaymentForm
+                {settings.bank_transfer_enabled === "true" && (
+                  <fieldset className="mb-6 flex flex-wrap gap-4" disabled={isSubmitting}>
+                    <legend className="mb-2 font-semibold">Ödeme yöntemi</legend>
+                    <label><input type="radio" name="paymentMethod" checked={paymentMethod === "credit_card"} onChange={() => setPaymentMethod("credit_card")} /> Kredi / Banka Kartı</label>
+                    <label><input type="radio" name="paymentMethod" checked={paymentMethod === "bank_transfer"} onChange={() => setPaymentMethod("bank_transfer")} /> Havale / EFT</label>
+                  </fieldset>
+                )}
+                {paymentMethod === "bank_transfer" ? <div className="space-y-3 rounded-xl border p-4">
+                  <p>{settings.bank_transfer_bank} — {settings.bank_transfer_holder}</p>
+                  <p className="break-all font-mono">{settings.bank_transfer_iban}</p>
+                  <p>{settings.bank_transfer_note}</p>
+                  <p className="text-sm">Açıklamaya sipariş numaranızı yazın. Ödemeniz kontrol edildikten sonra siparişiniz hazırlanır.</p>
+                  <button type="button" disabled={isSubmitting} className="rounded-lg bg-primary px-5 py-3 text-white disabled:opacity-50" onClick={() => handlePaymentSubmit({card_number:"",expiry:"",cvv:"",holder_name:"",save_card:false})}>{isSubmitting ? "Oluşturuluyor…" : "Havale ile Siparişi Tamamla"}</button>
+                </div> : <PaymentForm
                   onSubmit={handlePaymentSubmit}
                   savedCards={savedCards}
                   isSubmitting={isSubmitting}
-                />
+                />}
 
                 <div className="mt-6">
                   <button
