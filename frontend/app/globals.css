@@ -993,3 +993,9 @@ body:has(.consent-panel) .pwa-notice,body:has([role="dialog"][aria-modal="true"]
  .commerce-footer-services { grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 12px; padding:14px; }
  .commerce-footer-services > a { padding:0; gap:8px; }
 }
+
+/* Mobile search: 16px inputs avoid focus zoom, while results use full-width rows. */
+@media (max-width: 767px) {
+  .shop-header input[type="search"] { font-size: 16px; }
+  .search-preview-results { max-height: min(460px, 55dvh); overflow-x: hidden; }
+}
