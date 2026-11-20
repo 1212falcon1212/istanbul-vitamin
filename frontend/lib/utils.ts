@@ -163,3 +163,10 @@ export function resolveImageUrl(url?: string | null): string {
   }
   return url;
 }
+
+// The original uploaded wordmark includes wide transparent margins.
+export function storefrontLogo(url?: string): string {
+  if (!url) return "";
+  if (url.endsWith("/1776618321883813252-61e5397263e2a0f0.png")) return "/icons/storefront-logo.png";
+  return resolveImageUrl(url);
+}

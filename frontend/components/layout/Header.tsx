@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn, resolveImageUrl } from "@/lib/utils";
+import { cn, resolveImageUrl, storefrontLogo } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 import { useCartDrawer } from "@/lib/cart-drawer";
 import {useHomeContent} from "@/lib/use-home-content";
@@ -150,9 +150,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
   // --- Settings (site adı, logo) ---
   const home=useHomeContent();
   const { settings, isLoading: settingsLoading } = useSettings();
-  const logoUrl = settings.site_logo_url
-    ? resolveImageUrl(settings.site_logo_url)
-    : "";
+  const logoUrl = storefrontLogo(settings.site_logo_url);
   const siteName = settings.site_name || "İstanbul Vitamin";
   const announcementText = settings.top_header_text?.trim() ?? "Stoktaki ürünlerde aynı gün kargo • Bakımın için sevdiğin markalar bir arada";
   const announcementHref = settings.top_header_link?.trim();
@@ -261,12 +259,12 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
               <img
                 src={logoUrl}
                 alt={siteName}
-                className="h-10 lg:h-11 w-auto object-contain group-hover:opacity-90 transition-opacity"
+                className="h-10 lg:h-12 max-w-[34vw] w-auto object-contain group-hover:opacity-90 transition-opacity"
               />
             ) : settingsLoading ? (
               // Settings yüklenirken logo placeholder — fallback metin "İstanbul Vitamin"
               // birden fazla yerde flash oluşturuyordu, bunun yerine boş alan tutuyoruz.
-              <span className="block h-10 lg:h-11 w-32" aria-hidden />
+              <span className="block h-10 lg:h-12 w-32" aria-hidden />
             ) : (
               <span className="flex items-baseline gap-0.5">
                 <span className="font-display text-2xl lg:text-[1.7rem] font-bold text-text-primary tracking-tight group-hover:text-primary transition-colors">
@@ -432,7 +430,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
               <img
                 src={logoUrl}
                 alt={siteName}
-                className="h-8 w-auto object-contain"
+                className="h-10 w-auto object-contain"
               />
             ) : settingsLoading ? (
               <span className="block h-8 w-24" aria-hidden />

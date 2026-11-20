@@ -7,13 +7,18 @@ import { safeContentLink } from "@/lib/home-content";
 import { useSettings } from "@/lib/settings";
 import { useFooterCatalog } from "@/lib/footer-context";
 import { footerSelection, type FooterLink } from "@/lib/footer-catalog";
-import { resolveImageUrl } from "@/lib/utils";
+import { storefrontLogo } from "@/lib/utils";
 
 const PAYMENT_LOGOS = [
   { name: "Visa", src: "/payments/visa.png" },
   { name: "Mastercard", src: "/payments/mastercard.svg" },
   { name: "TROY", src: "/payments/troy.svg" },
-  { name: "PayTR", src: "/payments/paytr.png" },
+
+  { name: "Bonus", src: "/payments/bonus.png" },
+  { name: "World", src: "/payments/world.webp" },
+  { name: "Axess", src: "/payments/axess.png" },
+  { name: "Maximum", src: "/payments/maximum.svg" },
+  { name: "QNB Kredi Kartı", src: "/payments/qnb.png" },
 ];
 
 function ServiceIcon({ name }: { name: string }) {
@@ -39,7 +44,7 @@ export default function Footer() {
   const { settings } = useSettings();
   const catalog = useFooterCatalog();
   const siteName = settings.site_name || "İstanbul Vitamin";
-  const logo = settings.site_logo_url ? resolveImageUrl(settings.site_logo_url) : "";
+  const logo = storefrontLogo(settings.site_logo_url);
   const categories = footerSelection(catalog.categories, c.categoryIds, c.categoryLimit);
   const brands = footerSelection(catalog.brands, c.brandIds, c.brandLimit);
   const products = footerSelection(catalog.products, c.productIds, c.productLimit, 12);
@@ -89,9 +94,10 @@ export default function Footer() {
       {c.newsletterEnabled && <FooterNewsletter />}
       {c.paymentEnabled && <div className="iv-footer-payment">
         <div><h3>{c.paymentTitle}</h3><p>{c.paymentDescription}</p></div>
-        <div className="iv-payment-badges" aria-label="Kart ağları ve ödeme sağlayıcısı">
-          {PAYMENT_LOGOS.map(logo => <span className={`iv-payment-badge ${logo.name === "TROY" ? "iv-payment-troy" : ""}`} key={logo.name}><img src={logo.src} alt={logo.name} width="64" height="30" loading="lazy" /></span>)}
-          {settings.bank_transfer_enabled === "true" && <span className="iv-payment-badge">Havale / EFT</span>}
+        <div className="footer-payment-row">
+          <span className="footer-paytr"><img src="/payments/paytr-current.png" alt="PayTR" loading="lazy" /> ile öde</span>
+          {PAYMENT_LOGOS.map(logo => <img key={logo.name} src={logo.src} alt={logo.name} loading="lazy" />)}
+          {settings.bank_transfer_enabled === "true" && <small>Havale / EFT</small>}
         </div>
       </div>}
       </div>
