@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import OrderQuickActions from "./OrderQuickActions";
 import AdminShell from "@/components/admin/AdminShell";
 import DataTable, { type Column } from "@/components/admin/DataTable";
 import Pagination from "@/components/ui/Pagination";
@@ -117,9 +118,12 @@ export default function OrdersPage() {
       key: "actions",
       label: "",
       render: (o) => (
-        <Link href={`/yonetim/siparisler/${o.id}`} className="text-primary hover:underline text-xs">
-          Detay
-        </Link>
+        <div className="flex items-center justify-end gap-2">
+          <Link href={`/yonetim/siparisler/${o.id}`} className="text-primary hover:underline text-xs">
+            Detay
+          </Link>
+          <OrderQuickActions key={o.id} order={o} onInvoiced={() => fetchOrders(pagination.page)} />
+        </div>
       ),
     },
   ];

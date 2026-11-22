@@ -352,6 +352,26 @@ func (s *ProductService) AdminList(params ProductListParams) ([]models.Product, 
 	return s.List(params)
 }
 
+func (s *ProductService) UpdatePriceOrStatus(id uint64, price *float64, active *bool) error {
+	fields := map[string]interface{}{}
+	if price != nil {
+		fields["price"] = *price
+	}
+	if active != nil {
+		fields["is_active"] = *active
+	}
+	result := s.db.Model(&models.Product{}).Where("id = ?", id).Updates(fields)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// MySQL can report zero changed rows for an idempotent update.
+		return s.db.Select("id").First(&models.Product{}, id).Error
+	}
+	integrations.IndexProduct(id)
+	return nil
+}
+
 // UpdateStock urunun stok miktarini gunceller.
 func (s *ProductService) UpdateStock(id uint64, stock int) error {
 	result := s.db.Model(&models.Product{}).Where("id = ?", id).Update("stock", stock)

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"math"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/services"
 	"github.com/istanbulvitamin/backend/internal/utils"
+	"gorm.io/gorm"
 )
 
 type ProductHandler struct {
@@ -360,6 +362,33 @@ func (h *ProductHandler) Create(c *fiber.Ctx) error {
 	return utils.CreatedResponse(c, fiber.Map{
 		"product": fullProduct,
 	})
+}
+
+func (h *ProductHandler) QuickUpdate(c *fiber.Ctx) error {
+	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	if err != nil || id == 0 {
+		return utils.BadRequest(c, "Geçersiz ürün ID'si")
+	}
+	var req struct {
+		Price    *float64 `json:"price"`
+		IsActive *bool    `json:"is_active"`
+	}
+	if err := c.BodyParser(&req); err != nil || (req.Price == nil && req.IsActive == nil) {
+		return utils.BadRequest(c, "Fiyat veya durum belirtilmelidir")
+	}
+	if req.Price != nil {
+		price := *req.Price
+		if price <= 0 || price > 99999999.99 || math.Round(price*100)/100 != price {
+			return utils.BadRequest(c, "Geçerli bir fiyat girin (en fazla iki ondalık basamak)")
+		}
+	}
+	if err := h.service.UpdatePriceOrStatus(id, req.Price, req.IsActive); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return utils.NotFound(c, "Ürün")
+		}
+		return utils.InternalError(c)
+	}
+	return utils.SuccessResponse(c, nil)
 }
 
 // Update mevcut urunu gunceller.

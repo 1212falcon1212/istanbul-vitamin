@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import JsBarcode from "jsbarcode";
 import { api } from "@/lib/api";
 import type { ArasLabelData } from "@/types";
@@ -50,9 +51,9 @@ export default function LabelPrintModal({
     window.print();
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white"
+      className="print-root fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:p-0 print:bg-white"
       role="dialog"
       aria-modal="true"
     >
@@ -103,6 +104,7 @@ export default function LabelPrintModal({
             size: 100mm 150mm;
             margin: 4mm;
           }
+          .print-root { position: static !important; display: block !important; }
           body {
             background: #fff !important;
           }
@@ -121,9 +123,7 @@ export default function LabelPrintModal({
         }
       `}</style>
 
-      {/* Print kapsamı için root marker — body > .print-root sayesinde fixed dışındakiler gizlenir */}
-      <div className="print-root" style={{ display: "none" }} />
-    </div>
+    </div>, document.body
   );
 }
 

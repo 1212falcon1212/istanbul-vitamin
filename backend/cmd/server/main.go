@@ -368,6 +368,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	admin.Get("/products/:id", productHandler.AdminGetByID)
 	admin.Post("/products", productHandler.Create)
 	admin.Put("/products/:id", productHandler.Update)
+	admin.Patch("/products/:id", productHandler.QuickUpdate)
 	admin.Delete("/products/:id", productHandler.Delete)
 
 	// Admin - Categories
