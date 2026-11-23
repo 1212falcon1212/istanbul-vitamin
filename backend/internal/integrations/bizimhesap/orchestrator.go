@@ -137,9 +137,6 @@ func RegenerateInvoice(db *gorm.DB, cfgProvider ConfigProvider, orderID uint64) 
 	if order.Status == "cancelled" || order.Status == "refunded" {
 		return errors.New("iptal veya iade edilen sipariş için fatura kesilemez")
 	}
-	if order.Status == "pending" && order.ApprovedAt == nil {
-		return errors.New("önce siparişi onaylayın")
-	}
 	if strings.TrimSpace(order.BizimHesapInvoiceID) != "" {
 		log.Printf("[bizimhesap] ⊘ order=%d zaten faturalı (guid=%s)", orderID, order.BizimHesapInvoiceID)
 		return errors.New("bu siparişin zaten faturası var")

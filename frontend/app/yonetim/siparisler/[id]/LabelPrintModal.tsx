@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import InvoiceAction from "../InvoiceAction";
+import Image from "next/image";
 import JsBarcode from "jsbarcode";
 import { api } from "@/lib/api";
-import type { ArasLabelData } from "@/types";
+import type { ArasLabelData, Order } from "@/types";
 
 /**
  * Aras Kargo etiket basım modal'ı.
@@ -14,12 +16,15 @@ import type { ArasLabelData } from "@/types";
  * jsbarcode ile Code128 üretiliyor (her parçanın `barcode_number`'ı).
  */
 export default function LabelPrintModal({
-  orderId,
+  order,
   onClose,
 }: {
-  orderId: number;
-  onClose: () => void;
+  order: Order;
+  onClose: (issued: boolean) => void;
 }) {
+  const orderId = order.id;
+  const [invoicing, setInvoicing] = useState(false);
+  const [issued, setIssued] = useState(false);
   const [data, setData] = useState<ArasLabelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -58,11 +63,12 @@ export default function LabelPrintModal({
       aria-modal="true"
     >
       {/* Modal frame — print sırasında sadece içerik görünür */}
-      <div className="aras-print-area relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl print:max-h-none print:max-w-none print:rounded-none print:shadow-none print:overflow-visible">
+      <div className="aras-print-area relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl print:max-h-none print:max-w-none print:rounded-none print:shadow-none print:overflow-visible">
         {/* Header — print sırasında gizli */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-white p-4 print:hidden">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white p-4 print:hidden">
           <h3 className="font-display text-lg text-text-primary">Aras Kargo Etiketi</h3>
           <div className="flex items-center gap-2">
+            <InvoiceAction order={order} onIssued={() => setIssued(true)} onBusy={setInvoicing} />
             <button
               onClick={handlePrint}
               disabled={!data}
@@ -71,7 +77,7 @@ export default function LabelPrintModal({
               Yazdır
             </button>
             <button
-              onClick={onClose}
+              disabled={invoicing} onClick={() => onClose(issued)}
               className="h-9 px-4 border border-border text-text-primary rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
             >
               Kapat
@@ -79,7 +85,7 @@ export default function LabelPrintModal({
           </div>
         </div>
 
-        <div className="p-4 print:p-0">
+        <div className="bg-slate-100 p-4 print:bg-white print:p-0">
           {loading && <p className="text-sm text-text-secondary">Yükleniyor…</p>}
           {error && (
             <div className="rounded-lg bg-red-50 text-red-700 p-3 text-sm">{error}</div>
@@ -147,6 +153,8 @@ function LabelSheet({
           displayValue: true,
           fontSize: 14,
           margin: 0,
+          marginLeft: 20,
+          marginRight: 20,
         });
       } catch {
         // jsbarcode bazı karakter setlerinde hata atabilir; yutuyoruz, fallback için sayısal göster.
@@ -156,41 +164,30 @@ function LabelSheet({
 
   if (!parcel) return null;
   return (
-    <div className="print-page rounded-xl border border-border p-4 print:rounded-none print:border-0">
-      <div className="flex items-baseline justify-between border-b border-gray-300 pb-2">
-        <span className="font-display text-base font-semibold">Aras Kargo</span>
-        <span className="text-xs text-gray-600">
-          {parcel.sequence} / {parcel.total} parça
-        </span>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] leading-snug">
-        <div>
-          <p className="font-semibold uppercase text-gray-500">Gönderen</p>
-          <p className="font-medium">{data.ship_from_name}</p>
-          <p>{data.ship_from_phone}</p>
-          <p>{data.ship_from_address}</p>
-          <p>
-            {data.ship_from_town}, {data.ship_from_city}
-          </p>
-        </div>
-        <div>
-          <p className="font-semibold uppercase text-gray-500">Alıcı</p>
-          <p className="font-medium">{data.ship_to_name}</p>
-          <p>{data.ship_to_phone}</p>
-          <p>{data.ship_to_address}</p>
-          <p>
-            {data.ship_to_town}, {data.ship_to_city}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-col items-center justify-center border-t border-gray-300 pt-3">
-        <svg ref={barcodeRef} />
-        <p className="mt-1 text-[10px] text-gray-600">
-          Sipariş #{data.order_number} · Entegrasyon: {data.integration_code}
-        </p>
-      </div>
-    </div>
+    <article className="print-page mx-auto max-w-[100mm] break-inside-avoid rounded-xl border border-slate-300 bg-white p-5 text-slate-950 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:text-black print:shadow-none">
+      <header className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+        <Image src="/aras-kargo.svg" alt="Aras Kargo" width={148} height={40} unoptimized className="h-8 w-auto" />
+        <span className="text-xs font-semibold">Parça {parcel.sequence} / {parcel.total}</span>
+      </header>
+      <section className="border-b border-slate-300 py-3 text-xs leading-snug">
+        <h4 className="mb-1 text-[10px] font-bold uppercase tracking-wider">Gönderen</h4>
+        <p className="font-semibold">{data.ship_from_name}</p>
+        <p>{data.ship_from_address}</p>
+        <p>{data.ship_from_town}, {data.ship_from_city}</p>
+        <p>{data.ship_from_phone}</p>
+      </section>
+      <section className="break-words py-4 text-sm leading-snug">
+        <h4 className="mb-1 text-[10px] font-bold uppercase tracking-wider">Alıcı</h4>
+        <p className="text-lg font-bold">{data.ship_to_name}</p>
+        <p>{data.ship_to_address}</p>
+        <p className="font-semibold">{data.ship_to_town}, {data.ship_to_city}</p>
+        <p>{data.ship_to_phone}</p>
+      </section>
+      <footer className="border-t-2 border-slate-900 pt-4 text-center">
+        <svg ref={barcodeRef} aria-label={parcel.barcode_number} className="mx-auto block h-auto max-w-full" />
+        <p className="mt-3 text-xs">Sipariş <strong>#{data.order_number}</strong></p>
+        {data.integration_code !== data.order_number && <p className="text-xs">Entegrasyon {data.integration_code}</p>}
+      </footer>
+    </article>
   );
 }

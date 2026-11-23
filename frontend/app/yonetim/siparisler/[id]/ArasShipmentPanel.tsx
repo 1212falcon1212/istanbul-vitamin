@@ -153,7 +153,7 @@ export default function ArasShipmentPanel({ order, onChange }: Props) {
       </div>
 
       {labelOpen && (
-        <LabelPrintModal orderId={order.id} onClose={() => setLabelOpen(false)} />
+        <LabelPrintModal order={order} onClose={(issued) => { setLabelOpen(false); if (issued) void onChange(); }} />
       )}
     </div>
   );
