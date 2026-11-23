@@ -278,8 +278,9 @@ func (s *OrderService) List(userID uint64, page, perPage int) ([]models.Order, i
 
 // AdminList tum siparisleri sayfalanmis ve filtrelenmis olarak dondurur.
 // invoiced nil değilse Bizimhesap fatura durumuna göre filtreler:
-//   true  -> bizim_hesap_invoice_id dolu
-//   false -> bizim_hesap_invoice_id boş
+//
+//	true  -> bizim_hesap_invoice_id dolu
+//	false -> bizim_hesap_invoice_id boş
 func (s *OrderService) AdminList(page, perPage int, status, source string, invoiced *bool) ([]models.Order, int64, error) {
 	var orders []models.Order
 	var total int64
@@ -517,6 +518,10 @@ func (s *OrderService) MarkCancelAttempt(orderID uint64, succeeded bool) error {
 // CancelByCustomer pending durumdaki siparişi iptal eder + stok geri yükler.
 // CancellationService tarafından otomatik onaylı pending iptaller için çağrılır.
 func (s *OrderService) CancelByCustomer(orderID uint64, note string) error {
+	return s.cancelPending(orderID, note, "customer")
+}
+
+func (s *OrderService) cancelPending(orderID uint64, note, actor string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var order models.Order
 		if err := tx.Preload("Items").First(&order, orderID).Error; err != nil {
@@ -557,7 +562,7 @@ func (s *OrderService) CancelByCustomer(orderID uint64, note string) error {
 			OldStatus: "pending",
 			NewStatus: "cancelled",
 			Note:      note,
-			ChangedBy: "customer",
+			ChangedBy: actor,
 		}).Error; err != nil {
 			return err
 		}

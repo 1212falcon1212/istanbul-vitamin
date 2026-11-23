@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net"
 	"strconv"
 	"strings"
 
@@ -23,16 +24,8 @@ func NewPaymentHandler(cfg *config.Config) *PaymentHandler {
 }
 
 type startPaymentRequest struct {
-	SavedCardID    uint64 `json:"saved_card_id"`
-	OrderID        uint64 `json:"order_id"`
-	CardNumber     string `json:"card_number"`
-	ExpMonth       string `json:"exp_month"`
-	ExpYear        string `json:"exp_year"`
-	CVV            string `json:"cvv"`
-	CardHolderName string `json:"card_holder_name"`
-	Installment    int    `json:"installment"`
-	SaveCard       bool   `json:"save_card"`
-	CardToken      string `json:"card_token"`
+	OrderID  uint64 `json:"order_id"`
+	LastFour string `json:"last_four"`
 }
 
 // StartPayment odeme islemini baslatir.
@@ -51,36 +44,13 @@ func (h *PaymentHandler) StartPayment(c *fiber.Ctx) error {
 	if userID == 0 || database.DB.Where("id = ? AND user_id = ?", req.OrderID, userID).First(&owned).Error != nil {
 		return utils.NotFound(c, "Sipariş")
 	}
-	if req.SavedCardID != 0 {
-		var card models.SavedCard
-		if database.DB.Where("id = ? AND user_id = ?", req.SavedCardID, userID).First(&card).Error != nil {
-			return utils.NotFound(c, "Kart")
-		}
-		req.CardToken = card.CardToken
-	}
-	// Kaydedilmis kart ile odeme yapilmiyorsa kart bilgileri zorunlu
-	if req.CardToken == "" {
-		req.CardNumber = strings.TrimSpace(req.CardNumber)
-		req.ExpMonth = strings.TrimSpace(req.ExpMonth)
-		req.ExpYear = strings.TrimSpace(req.ExpYear)
-		req.CVV = strings.TrimSpace(req.CVV)
-		req.CardHolderName = strings.TrimSpace(req.CardHolderName)
-
-		if req.CardNumber == "" || req.ExpMonth == "" || req.ExpYear == "" || req.CVV == "" || req.CardHolderName == "" {
-			return utils.BadRequest(c, "Kart bilgileri zorunludur")
+	ip := c.IP()
+	if peer := net.ParseIP(ip); peer != nil && peer.IsLoopback() {
+		if forwarded := net.ParseIP(c.Get("X-Real-IP")); forwarded != nil {
+			ip = forwarded.String()
 		}
 	}
-
-	cardData := services.CardPaymentData{
-		CardNumber:     req.CardNumber,
-		ExpMonth:       req.ExpMonth,
-		ExpYear:        req.ExpYear,
-		CVV:            req.CVV,
-		CardHolderName: req.CardHolderName,
-		Installment:    req.Installment,
-		SaveCard:       req.SaveCard,
-		CardToken:      req.CardToken,
-	}
+	cardData := services.CardPaymentData{UserIP: ip, LastFour: req.LastFour}
 
 	result, err := h.service.StartPayment(req.OrderID, cardData)
 	if err != nil {
@@ -127,7 +97,7 @@ func (h *PaymentHandler) PayTRCallback(c *fiber.Ctx) error {
 	data["status"] = c.FormValue("status")
 	data["total_amount"] = c.FormValue("total_amount")
 	data["hash"] = c.FormValue("hash")
-	data["payment_id"] = c.FormValue("payment_id")
+	data["test_mode"] = c.FormValue("test_mode")
 
 	if err := h.service.HandleCallback(data); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("FAIL")

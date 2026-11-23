@@ -137,6 +137,7 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     id: "paytr",
     label: "PayTR",
     fields: [
+      { key: "paytr.test_mode", label: "Test ödemesi", type: "checkbox", hint: "Açıkken başarılı test işlemleri siparişe test ödemesi olarak kaydedilir." },
       { key: "paytr.merchant_id", label: "Mağaza numarası (merchant_id)", type: "text" },
       { key: "paytr.merchant_key", label: "Mağaza parolası (merchant_key)", type: "password" },
       { key: "paytr.merchant_salt", label: "Mağaza gizli anahtarı (merchant_salt)", type: "password" },
@@ -406,7 +407,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 mt-6 flex-wrap">
             <button
               onClick={handleSave}
-              disabled={saving || loading || !!error || (activeTab === "paytr" && !currentTab.fields.every(f => (values[f.key] || (f.type === "password" && savedValues[f.key]) || "").trim()))}
+              disabled={saving || loading || !!error || (activeTab === "paytr" && !currentTab.fields.filter(f => f.type !== "checkbox").every(f => (values[f.key] || (f.type === "password" && savedValues[f.key]) || "").trim()))}
               className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {saving ? "Kaydediliyor..." : "Kaydet"}

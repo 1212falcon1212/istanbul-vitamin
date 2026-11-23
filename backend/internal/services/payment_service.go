@@ -4,9 +4,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/gorm/clause"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,20 +21,13 @@ import (
 )
 
 type CardPaymentData struct {
-	CardNumber     string `json:"card_number"`
-	ExpMonth       string `json:"exp_month"`
-	ExpYear        string `json:"exp_year"`
-	CVV            string `json:"cvv"`
-	CardHolderName string `json:"card_holder_name"`
-	Installment    int    `json:"installment"`
-	SaveCard       bool   `json:"save_card"`
-	CardToken      string `json:"card_token"`
+	UserIP   string
+	LastFour string
 }
 
 type PaymentResult struct {
-	Status      string `json:"status"`
-	PaymentID   string `json:"payment_id"`
-	RedirectURL string `json:"redirect_url"`
+	Status string            `json:"status"`
+	Fields map[string]string `json:"fields,omitempty"`
 }
 
 type InstallmentOption struct {
@@ -94,34 +91,10 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 		return nil, errors.New("bu sipariş için kart ödemesi kullanılamaz")
 	}
 
-	if order.Status != "pending" {
+	if order.Status != "pending" || order.PaymentStatus == "paid" || order.PaymentStatus == "test" {
 		return nil, errors.New("bu sipariş için ödeme yapılamaz")
 	}
 
-	// Keep only masked display information; never persist the full PAN or CVV.
-	digits := strings.NewReplacer(" ", "", "-", "").Replace(cardData.CardNumber)
-	lastFour := ""
-	if len(digits) >= 12 && len(digits) <= 19 {
-		valid := true
-		for _, c := range digits {
-			if c < '0' || c > '9' {
-				valid = false
-			}
-		}
-		if valid {
-			lastFour = digits[len(digits)-4:]
-		}
-	}
-	if cardData.CardToken != "" && order.UserID != nil {
-		var saved models.SavedCard
-		if err := s.db.Where("user_id = ? AND card_token = ?", *order.UserID, cardData.CardToken).First(&saved).Error; err != nil {
-			return nil, errors.New("kayıtlı kart bulunamadı")
-		}
-		lastFour = saved.LastFour
-	}
-	if err := s.db.Model(&order).Update("payment_card_last_four", lastFour).Error; err != nil {
-		return nil, err
-	}
 	merchantID, merchantKey, merchantSalt, err := s.payTRCredentials()
 	if err != nil {
 		return nil, err
@@ -152,114 +125,56 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 		if err != nil {
 			return nil, errors.New("dev mode ödeme kaydedilemedi")
 		}
-		return &PaymentResult{
-			Status:      "success",
-			PaymentID:   devPaymentID,
-			RedirectURL: "",
-		}, nil
+		return &PaymentResult{Status: "success"}, nil
 	}
 
-	// PayTR tutar kurus cinsinden (integer)
-	paymentAmount := fmt.Sprintf("%.0f", order.Total*100)
-
-	// Sepet icerigi (basket JSON)
-	var basketItems []string
-	for _, item := range order.Items {
-		itemTotal := fmt.Sprintf("%.0f", item.TotalPrice*100)
-		basketItems = append(basketItems, fmt.Sprintf(`["%s","%s",%d]`, item.ProductName, itemTotal, item.Quantity))
+	if len(cardData.LastFour) != 4 || strings.Trim(cardData.LastFour, "0123456789") != "" {
+		return nil, errors.New("kartın son dört hanesi gereklidir")
 	}
-	basketJSON := "[" + strings.Join(basketItems, ",") + "]"
-	userBasket := base64.StdEncoding.EncodeToString([]byte(basketJSON))
-
-	// Installment
-	installment := cardData.Installment
-	if installment < 1 {
-		installment = 0 // Tek cekim
+	var user models.User
+	if order.UserID == nil || s.db.Select("email").First(&user, *order.UserID).Error != nil || user.Email == "" {
+		return nil, errors.New("ödeme için müşteri e-postası gereklidir")
 	}
-
-	// Hash olustur: merchantID + userIP + merchantOid + email + paymentAmount + userBasket + noInstallment + maxInstallment + currency + testMode
-	merchantOID := order.OrderNumber
-	userIP := "127.0.0.1" // Handler tarafindan set edilebilir
-	email := ""
-	if order.UserID != nil {
-		var user models.User
-		if err := s.db.First(&user, *order.UserID).Error; err == nil {
-			email = user.Email
-		}
+	var settings []models.Setting
+	if err := s.db.Where("`key` = ?", "paytr.test_mode").Find(&settings).Error; err != nil {
+		return nil, errors.New("PayTR test modu okunamadı")
 	}
-
-	noInstallment := "0"
-	maxInstallment := "0"
-	if installment == 0 {
-		noInstallment = "1"
-	} else {
-		maxInstallment = fmt.Sprintf("%d", installment)
-	}
-
-	currency := "TL"
-	testMode := "0"
-	if s.cfg.AppEnv == "development" {
-		testMode = "1"
-	}
-
-	// PayTR HMAC hash: merchant_id + user_ip + merchant_oid + email + payment_amount + user_basket + no_installment + max_installment + currency + test_mode
-	hashStr := merchantID + userIP + merchantOID + email + paymentAmount + userBasket + noInstallment + maxInstallment + currency + testMode
-	paytrToken := s.generateHash(hashStr, merchantKey, merchantSalt)
-
-	// PayTR API cagrisi
-	resp, err := s.client.R().
-		SetFormData(map[string]string{
-			"merchant_id":       merchantID,
-			"user_ip":           userIP,
-			"merchant_oid":      merchantOID,
-			"email":             email,
-			"payment_amount":    paymentAmount,
-			"paytr_token":       paytrToken,
-			"user_basket":       userBasket,
-			"debug_on":          testMode,
-			"no_installment":    noInstallment,
-			"max_installment":   maxInstallment,
-			"user_name":         cardData.CardHolderName,
-			"user_phone":        order.ShippingPhone,
-			"merchant_ok_url":   s.cfg.FrontendURL + "/odeme/basarili",
-			"merchant_fail_url": s.cfg.FrontendURL + "/odeme/basarisiz",
-			"currency":          currency,
-			"test_mode":         testMode,
-			"cc_owner":          cardData.CardHolderName,
-			"card_number":       cardData.CardNumber,
-			"expiry_month":      cardData.ExpMonth,
-			"expiry_year":       cardData.ExpYear,
-			"cvv":               cardData.CVV,
-			"installment_count": fmt.Sprintf("%d", installment),
-		}).
-		SetResult(map[string]interface{}{}).
-		Post("/odeme/api/get-token")
-
+	test := s.cfg.AppEnv != "production" || (len(settings) > 0 && settings[0].Value == "true")
+	fields, err := directFields(order, user.Email, cardData.UserIP, s.cfg.FrontendURL, merchantID, merchantKey, merchantSalt, test)
 	if err != nil {
-		return nil, errors.New("ödeme servisi ile iletişim kurulamadı")
+		return nil, err
 	}
-
-	result, ok := resp.Result().(*map[string]interface{})
-	if !ok || result == nil {
-		return nil, errors.New("ödeme servisi geçersiz yanıt döndü")
+	if err := s.db.Model(&order).Update("payment_card_last_four", cardData.LastFour).Error; err != nil {
+		return nil, err
 	}
+	return &PaymentResult{Status: "direct", Fields: fields}, nil
+}
 
-	respMap := *result
-	status, _ := respMap["status"].(string)
-	if status != "success" {
-		reason, _ := respMap["reason"].(string)
-		if reason == "" {
-			reason = "ödeme başlatılırken bir hata oluştu"
-		}
-		return nil, errors.New(reason)
+func directFields(order models.Order, email, ip, frontend, id, key, salt string, test bool) (map[string]string, error) {
+	basket := make([][3]any, 0, len(order.Items))
+	for _, item := range order.Items {
+		basket = append(basket, [3]any{item.ProductName, fmt.Sprintf("%.2f", item.UnitPrice), item.Quantity})
 	}
-
-	token, _ := respMap["token"].(string)
-
-	return &PaymentResult{
-		Status:      "redirect",
-		PaymentID:   merchantOID,
-		RedirectURL: s.cfg.PayTRBaseURL + "/odeme/guvenli/" + token,
+	raw, err := json.Marshal(basket)
+	if err != nil {
+		return nil, err
+	}
+	mode, prefix := "0", "IVP"
+	if test {
+		mode, prefix = "1", "IVT"
+	}
+	oid := prefix + strconv.FormatUint(order.ID, 10)
+	amount := fmt.Sprintf("%.2f", order.Total)
+	hash := id + ip + oid + email + amount + "card" + "0" + "TL" + mode + "0"
+	signature := generateHash(hash, key, salt)
+	return map[string]string{
+		"merchant_id": id, "user_ip": ip, "merchant_oid": oid, "email": email,
+		"payment_amount": amount, "payment_type": "card", "installment_count": "0", "currency": "TL",
+		"non_3d": "0", "test_mode": mode, "paytr_token": signature, "client_lang": "tr",
+		"user_name":  strings.TrimSpace(order.ShippingFirstName + " " + order.ShippingLastName),
+		"user_phone": order.ShippingPhone, "user_address": order.ShippingAddress, "user_basket": string(raw),
+		"merchant_ok_url":   strings.TrimRight(frontend, "/") + "/odeme/basarili?order=" + url.QueryEscape(order.OrderNumber),
+		"merchant_fail_url": strings.TrimRight(frontend, "/") + "/odeme/basarisiz",
 	}, nil
 }
 
@@ -283,72 +198,72 @@ func (s *PaymentService) HandleCallback(data map[string]string) error {
 		return errors.New("PayTR bilgileri eksik")
 	}
 	hashStr := merchantOID + salt + status + totalAmount
-	expectedHash := s.generateHash(hashStr, key, "")
+	expectedHash := generateHash(hashStr, key, "")
 
 	if !hmac.Equal([]byte(hash), []byte(expectedHash)) {
 		return errors.New("geçersiz callback hash değeri")
 	}
 
-	var order models.Order
-	if err := s.db.Where("order_number = ?", merchantOID).First(&order).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("sipariş bulunamadı")
+	if status != "success" && status != "failed" {
+		return errors.New("geçersiz ödeme durumu")
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		q := tx.Clauses(clause.Locking{Strength: "UPDATE"})
+		direct := strings.HasPrefix(merchantOID, "IVP") || strings.HasPrefix(merchantOID, "IVT")
+		if direct {
+			n, err := strconv.ParseUint(merchantOID[3:], 10, 64)
+			if err != nil || n == 0 {
+				return errors.New("geçersiz ödeme numarası")
+			}
+			q = q.Where("id = ?", n)
+		} else {
+			q = q.Where("order_number = ?", merchantOID)
 		}
-		return errors.New("sipariş bilgileri alınırken bir hata oluştu")
-	}
-
-	// Idempotency: PayTR retry veya çift-tetiklemeye karşı
-	// - PaymentID doluysa başarı zaten işlenmiş
-	// - Sipariş cancelled/refunded terminal durumundaysa dokunma
-	if order.PaymentID != "" || order.Status == "cancelled" || order.Status == "refunded" {
-		return nil
-	}
-
-	if status == "success" {
-		return s.db.Transaction(func(tx *gorm.DB) error {
-			// Status değiştirmiyoruz; sipariş pending kalır, admin kargoya verince
-			// 'shipped'e geçer. Sadece PaymentID ve history kaydı ekleriz.
-			if err := tx.Model(&order).Updates(map[string]interface{}{"payment_id": data["payment_id"], "payment_status": "paid", "payment_confirmed_at": time.Now()}).Error; err != nil {
-				return errors.New("ödeme bilgisi kaydedilirken bir hata oluştu")
-			}
-
-			history := models.OrderStatusHistory{
-				OrderID:   order.ID,
-				OldStatus: order.Status,
-				NewStatus: order.Status,
-				Note:      "PayTR ödeme onayı alındı",
-				ChangedBy: "system",
-			}
-			if err := tx.Create(&history).Error; err != nil {
-				return errors.New("sipariş durum geçmişi oluşturulurken bir hata oluştu")
-			}
-
-			return models.QueueNotification(tx, fmt.Sprintf("order:%d:payment_confirmed", order.ID), "payment_confirmed", order.ID, 0)
-		})
-	}
-
-	// Başarısız ödeme — sipariş pending ise iptal et.
-	if order.Status == "pending" {
-		return s.db.Transaction(func(tx *gorm.DB) error {
-			oldStatus := order.Status
-			if err := tx.Model(&order).Update("status", "cancelled").Error; err != nil {
-				return errors.New("sipariş durumu güncellenirken bir hata oluştu")
-			}
-			history := models.OrderStatusHistory{
-				OrderID:   order.ID,
-				OldStatus: oldStatus,
-				NewStatus: "cancelled",
-				Note:      "PayTR ödeme başarısız",
-				ChangedBy: "system",
-			}
-			if err := tx.Create(&history).Error; err != nil {
-				return errors.New("sipariş durum geçmişi oluşturulurken bir hata oluştu")
+		if err := q.First(&order).Error; err != nil {
+			return err
+		}
+		if order.PaymentMethod != "credit_card" {
+			return errors.New("geçersiz ödeme yöntemi")
+		}
+		if order.PaymentStatus == "paid" || order.PaymentStatus == "test" || order.PaymentStatus == "failed" {
+			return nil
+		}
+		if order.Status == "cancelled" || order.Status == "refunded" {
+			if status == "success" {
+				return errors.New("iptal edilmiş sipariş için ödeme bildirimi")
 			}
 			return nil
-		})
-	}
-
-	return nil
+		}
+		if status == "failed" {
+			if err := NewOrderService(tx).cancelPending(order.ID, "PayTR ödeme başarısız", "system:paytr"); err != nil {
+				return err
+			}
+			return tx.Model(&order).Update("payment_status", "failed").Error
+		}
+		expected := fmt.Sprintf("%.0f", order.Total*100)
+		if totalAmount != expected {
+			return errors.New("ödeme tutarı siparişle eşleşmiyor")
+		}
+		paymentStatus, note := "paid", "PayTR ödeme onayı alındı"
+		updates := map[string]any{"payment_id": merchantOID, "payment_confirmed_at": time.Now()}
+		if strings.HasPrefix(merchantOID, "IVT") || data["test_mode"] == "1" {
+			paymentStatus, note = "test", "PayTR test ödemesi onaylandı"
+			delete(updates, "payment_id")
+			delete(updates, "payment_confirmed_at")
+		}
+		updates["payment_status"] = paymentStatus
+		if err := tx.Model(&order).Updates(updates).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.OrderStatusHistory{OrderID: order.ID, OldStatus: order.Status, NewStatus: order.Status, Note: note, ChangedBy: "system:paytr"}).Error; err != nil {
+			return err
+		}
+		if paymentStatus == "paid" {
+			return models.QueueNotification(tx, fmt.Sprintf("order:%d:payment_confirmed", order.ID), "payment_confirmed", order.ID, 0)
+		}
+		return nil
+	})
 }
 
 // GetInstallments PayTR uzerinden taksit seceneklerini sorgular.
@@ -366,7 +281,7 @@ func (s *PaymentService) GetInstallments(binNumber string, amount float64) ([]In
 	paymentAmount := fmt.Sprintf("%.0f", amount*100)
 
 	hashStr := merchantID + binNumber + paymentAmount
-	paytrToken := s.generateHash(hashStr, merchantKey, merchantSalt)
+	paytrToken := generateHash(hashStr, merchantKey, merchantSalt)
 
 	resp, err := s.client.R().
 		SetFormData(map[string]string{
@@ -464,11 +379,14 @@ func (s *PaymentService) RefundPayment(orderID uint64, amount float64, reference
 	}
 
 	merchantOID := order.OrderNumber
+	if strings.HasPrefix(order.PaymentID, "IVP") {
+		merchantOID = order.PaymentID
+	}
 	returnAmount := fmt.Sprintf("%.2f", amount)
 
 	// Hash: merchant_id + merchant_oid + return_amount + merchant_salt
 	hashStr := merchantID + merchantOID + returnAmount
-	token := s.generateHash(hashStr, merchantKey, merchantSalt)
+	token := generateHash(hashStr, merchantKey, merchantSalt)
 
 	resp, err := s.client.R().
 		SetFormData(map[string]string{
@@ -504,7 +422,7 @@ func (s *PaymentService) RefundPayment(orderID uint64, amount float64, reference
 }
 
 // generateHash PayTR HMAC-SHA256 hash olusturur.
-func (s *PaymentService) generateHash(data, key, salt string) string {
+func generateHash(data, key, salt string) string {
 	mac := hmac.New(sha256.New, []byte(key))
 	mac.Write([]byte(data + salt))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))

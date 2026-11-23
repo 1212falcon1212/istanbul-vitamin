@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { api } from "@/lib/api";
-import type { Address, SavedCard } from "@/types";
+import type { Address } from "@/types";
 import AddressForm from "@/components/checkout/AddressForm";
 import PaymentForm from "@/components/checkout/PaymentForm";
 import Spinner from "@/components/ui/Spinner";
@@ -45,7 +45,9 @@ export default function OdemePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { cartId, items, subtotal, updateItem, removeItem } = useCart();
   const { settings } = useSettings();
-  const [paymentMethod, setPaymentMethod] = useState("credit_card");
+  const [preferredMethod, setPaymentMethod] = useState("credit_card");
+  const cardReady = settings.paytr_card_available === "true";
+  const paymentMethod = !cardReady && settings.bank_transfer_enabled === "true" ? "bank_transfer" : preferredMethod;
   const logoUrl = settings.site_logo_url
     ? resolveImageUrl(settings.site_logo_url)
     : "";
@@ -53,7 +55,6 @@ export default function OdemePage() {
 
   const [step, setStep] = useState<Step>("address");
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
-  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [shippingData, setShippingData] = useState<ShippingData | null>(null);
@@ -113,14 +114,9 @@ export default function OdemePage() {
     (async () => {
       setLoadingData(true);
       try {
-        const [addrRes, cardRes] = await Promise.all([
-          api.get<Address[]>("/addresses").catch(() => ({ data: [] })),
-          api.get<SavedCard[]>("/cards").catch(() => ({ data: [] })),
-        ]);
+        const addrRes = await api.get<Address[]>("/addresses").catch(() => ({ data: [] }));
         const addrs = Array.isArray(addrRes.data) ? addrRes.data : [];
-        const cards = Array.isArray(cardRes.data) ? cardRes.data : [];
         setSavedAddresses(addrs);
-        setSavedCards(cards);
         const def = addrs.find((a) => a.is_default);
         if (def) {
           setSelectedAddressId(def.id);
@@ -212,8 +208,6 @@ export default function OdemePage() {
     expiry: string;
     cvv: string;
     holder_name: string;
-    save_card: boolean;
-    saved_card_id?: number;
   }) {
     if (!shippingData) return;
     setIsSubmitting(true);
@@ -265,23 +259,33 @@ export default function OdemePage() {
           router.push(`/odeme/basarili?order=${encodeURIComponent(order.order_number)}&method=bank_transfer`);
           return;
         }
-        const [expMonth, expYear] = paymentData.expiry.split("/").map(value => value.trim());
-        const result = await api.post<{payment: {redirect_url?: string}}>("/payments/start", {
+        const result = await api.post<{payment: {status: string; fields?: Record<string,string>}}>("/payments/start", {
           order_id: order.id,
-          card_number: paymentData.card_number,
-          exp_month: expMonth,
-          exp_year: expYear,
-          cvv: paymentData.cvv,
-          card_holder_name: paymentData.holder_name,
-          saved_card_id: paymentData.saved_card_id,
-          save_card: paymentData.save_card,
-          installment: 1,
+          last_four: paymentData.card_number.slice(-4),
         });
-        if (result.data?.payment.redirect_url) {
-          window.location.assign(result.data.payment.redirect_url);
+        const payment = result.data?.payment;
+        if (payment?.status === "success") {
+          router.push(`/odeme/basarili?order=${encodeURIComponent(order.order_number)}`);
           return;
         }
-        router.push(`/odeme/basarili?order=${order.order_number}`);
+        if (payment?.status !== "direct" || !payment.fields?.paytr_token) throw new Error("Ödeme formu hazırlanamadı");
+        const [month, year] = paymentData.expiry.split("/");
+        const form = document.createElement("form");
+        form.method = "post";
+        form.action = "https://www.paytr.com/odeme";
+        for (const [name,value] of Object.entries({
+          ...payment.fields, card_number: paymentData.card_number, cc_owner: paymentData.holder_name,
+          expiry_month: month, expiry_year: year, cvv: paymentData.cvv,
+        })) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = name;
+          input.value = value;
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
       } else {
         throw new Error("Sipariş oluşturulamadı");
       }
@@ -797,7 +801,7 @@ export default function OdemePage() {
                 {settings.bank_transfer_enabled === "true" && (
                   <fieldset className="mb-6 flex flex-wrap gap-4" disabled={isSubmitting}>
                     <legend className="mb-2 font-semibold">Ödeme yöntemi</legend>
-                    <label><input type="radio" name="paymentMethod" checked={paymentMethod === "credit_card"} onChange={() => setPaymentMethod("credit_card")} /> Kredi / Banka Kartı</label>
+                    <label><input type="radio" name="paymentMethod" disabled={!cardReady} checked={paymentMethod === "credit_card"} onChange={() => setPaymentMethod("credit_card")} /> Kredi / Banka Kartı</label>
                     <label><input type="radio" name="paymentMethod" checked={paymentMethod === "bank_transfer"} onChange={() => setPaymentMethod("bank_transfer")} /> Havale / EFT</label>
                   </fieldset>
                 )}
@@ -806,10 +810,9 @@ export default function OdemePage() {
                   <p className="break-all font-mono">{settings.bank_transfer_iban}</p>
                   <p>{settings.bank_transfer_note}</p>
                   <p className="text-sm">Açıklamaya sipariş numaranızı yazın. Ödemeniz kontrol edildikten sonra siparişiniz hazırlanır.</p>
-                  <button type="button" disabled={isSubmitting} className="rounded-lg bg-primary px-5 py-3 text-white disabled:opacity-50" onClick={() => handlePaymentSubmit({card_number:"",expiry:"",cvv:"",holder_name:"",save_card:false})}>{isSubmitting ? "Oluşturuluyor…" : "Havale ile Siparişi Tamamla"}</button>
-                </div> : <PaymentForm
+                  <button type="button" disabled={isSubmitting} className="rounded-lg bg-primary px-5 py-3 text-white disabled:opacity-50" onClick={() => handlePaymentSubmit({card_number:"",expiry:"",cvv:"",holder_name:""})}>{isSubmitting ? "Oluşturuluyor…" : "Havale ile Siparişi Tamamla"}</button>
+                </div> : !cardReady ? <p>Kartla ödeme şu anda kullanılamıyor.</p> : <PaymentForm
                   onSubmit={handlePaymentSubmit}
-                  savedCards={savedCards}
                   isSubmitting={isSubmitting}
                 />}
 

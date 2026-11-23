@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,9 +45,22 @@ func (h *SettingHandler) GetAll(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
-	return utils.SuccessResponse(c, fiber.Map{
-		"settings": publicSettings(settings),
-	})
+	public := publicSettings(settings)
+	ready := true
+	for _, name := range []string{"merchant_id", "merchant_key", "merchant_salt"} {
+		value, ok := settings["paytr."+name]
+		if !ok {
+			value = os.Getenv("PAYTR_" + strings.ToUpper(name))
+		}
+		if strings.TrimSpace(value) == "" {
+			ready = false
+		}
+	}
+	public["paytr_card_available"] = "false"
+	if ready || (os.Getenv("APP_ENV") != "production" && os.Getenv("PAYMENT_MOCK_ENABLED") == "true") {
+		public["paytr_card_available"] = "true"
+	}
+	return utils.SuccessResponse(c, fiber.Map{"settings": public})
 }
 
 // GetByGroup belirli gruptaki ayarlari dondurur (public).
