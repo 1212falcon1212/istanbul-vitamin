@@ -162,6 +162,7 @@ function LabelSheet({
     }
   }, [parcel]);
 
+  const products = data.products ?? data.product_names?.map(name => ({name, barcode: ""})) ?? [];
   if (!parcel) return null;
   return (
     <article className="print-page mx-auto max-w-[100mm] rounded-xl border border-slate-300 bg-white p-5 text-slate-950 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:text-black print:shadow-none">
@@ -188,12 +189,12 @@ function LabelSheet({
         <p className="mt-3 text-xs">Sipariş <strong>#{data.order_number}</strong></p>
         {data.integration_code !== data.order_number && <p className="text-xs">Entegrasyon {data.integration_code}</p>}
       </footer>
-      {!!data.product_names?.length && (
+      {products.length > 0 && (
         <section className="mt-3 border-t border-slate-300 pt-2">
           <h4 className="mb-1 break-after-avoid text-xs font-bold">Siparişteki ürünler</h4>
           <ul className="list-disc space-y-1 pl-4 text-sm font-medium leading-snug">
-            {data.product_names.map((name, index) => (
-              <li key={index} className="break-inside-avoid [overflow-wrap:anywhere]">{name}</li>
+            {products.map(({name, barcode}, index) => (
+              <li key={index} className="break-inside-avoid [overflow-wrap:anywhere]">{name}{barcode && <span className="ml-2 inline-block font-mono text-xs">Barkod {barcode}</span>}</li>
             ))}
           </ul>
         </section>

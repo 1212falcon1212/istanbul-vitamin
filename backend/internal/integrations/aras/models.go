@@ -117,7 +117,13 @@ type ParcelBarcode struct {
 }
 
 // LabelData etiket modal'ı için backend'in ürettiği snapshot.
+type LabelProduct struct {
+	Name    string `json:"name"`
+	Barcode string `json:"barcode,omitempty"`
+}
+
 type LabelData struct {
+	Products        []LabelProduct  `json:"products"`
 	ProductNames    []string        `json:"product_names"`
 	OrderNumber     string          `json:"order_number"`
 	IntegrationCode string          `json:"integration_code"`

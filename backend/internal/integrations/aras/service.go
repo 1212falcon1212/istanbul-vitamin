@@ -340,10 +340,18 @@ func (s *Service) BarcodesFor(orderID uint64) (*LabelData, error) {
 	if err := s.db.First(&order, orderID).Error; err != nil {
 		return nil, errors.New("sipariş bulunamadı")
 	}
-	var productNames []string
-	if err := s.db.Model(&models.OrderItem{}).Where("order_id = ? AND TRIM(product_name) <> ''", orderID).
-		Order("id").Pluck("product_name", &productNames).Error; err != nil {
+	var products []LabelProduct
+	if err := s.db.Table("order_items AS oi").
+		Select("oi.product_name AS name, COALESCE(NULLIF(TRIM(v.barcode), ''), TRIM(p.barcode), '') AS barcode").
+		Joins("LEFT JOIN products AS p ON p.id = oi.product_id").
+		Joins("LEFT JOIN product_variants AS v ON v.id = oi.variant_id AND v.product_id = oi.product_id").
+		Where("oi.order_id = ? AND TRIM(oi.product_name) <> ''", orderID).
+		Order("oi.id").Scan(&products).Error; err != nil {
 		return nil, err
+	}
+	productNames := make([]string, len(products))
+	for i, product := range products {
+		productNames[i] = product.Name
 	}
 	parcelCount := 1
 	if order.ArasParcelCount != nil && *order.ArasParcelCount > 0 {
@@ -364,6 +372,7 @@ func (s *Service) BarcodesFor(orderID uint64) (*LabelData, error) {
 		senderName = strings.TrimSpace(contact.SiteName)
 	}
 	return &LabelData{
+		Products:        products,
 		ProductNames:    productNames,
 		OrderNumber:     order.OrderNumber,
 		IntegrationCode: integ,

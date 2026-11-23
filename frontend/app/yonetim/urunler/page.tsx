@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { saveProduct, type Changes } from "./productEdits";
+import { toast } from "sonner";
 import Link from "next/link";
 import ProductRowEditor from "./ProductRowEditor";
 import AdminShell from "@/components/admin/AdminShell";
@@ -25,6 +27,46 @@ export default function ProductsPage() {
   const [searchDebounced, setSearchDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [onlyLowStock, setOnlyLowStock] = useState(false);
+
+  type Draft = { product: Product; changes: Changes; error?: string };
+  const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const [savingIds, setSavingIds] = useState<number[]>([]);
+  const pending = Object.values(drafts);
+
+  function edit(product: Product, changes: Changes) {
+    setDrafts(current => {
+      const next = { ...current };
+      if (Object.keys(changes).length) next[product.id] = { product, changes };
+      else delete next[product.id];
+      return next;
+    });
+  }
+
+  async function save(entries: Draft[]) {
+    if (savingIds.length || !entries.length) return;
+    setSavingIds(entries.map(entry => entry.product.id));
+    let saved = 0;
+    let refresh = false;
+    try {
+      for (const {product, changes} of entries) {
+        try {
+          const fields = await saveProduct(product, changes);
+          setProducts(rows => rows.map(row => row.id === product.id ? {...row, ...fields} : row));
+          edit(product, {});
+          saved++;
+          if (fields.is_active !== undefined && statusFilter !== "all") refresh = true;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Ürün kaydedilemedi";
+          setDrafts(current => ({ ...current, [product.id]: { product, changes, error: message } }));
+        }
+      }
+      if (saved < entries.length) toast.error(`${saved} ürün kaydedildi. ${entries.length - saved} ürün kaydedilemedi.`);
+      else toast.success(`${saved} ürün kaydedildi.`);
+      if (refresh) await fetchProducts(1);
+    } finally {
+      setSavingIds([]);
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchDebounced(search), 400);
@@ -61,6 +103,7 @@ export default function ProductsPage() {
     if (!confirm(`"${p.name}" ürününü silmek istediğinizden emin misiniz?`)) return;
     try {
       await api.delete(`/admin/products/${p.id}`);
+      edit(p, {});
       fetchProducts(pagination.page);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Silme işlemi başarısız");
@@ -129,6 +172,11 @@ export default function ProductsPage() {
           Sadece düşük stok
         </label>
 
+        <button type="button" disabled={!pending.length || !!savingIds.length}
+          onClick={() => save(pending)}
+          className="h-10 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800 disabled:bg-gray-100 disabled:text-text-secondary">
+          {savingIds.length ? "Kaydediliyor…" : `Toplu kaydet${pending.length ? ` (${pending.length})` : ""}`}
+        </button>
         {/* Add */}
         <Link
           href="/yonetim/urunler/ekle"
@@ -246,12 +294,12 @@ export default function ProductsPage() {
                         statusChanged && statusFilter !== "all" && products.length === 1
                           ? Math.max(1, pagination.page - 1) : pagination.page
                       )}
-                      onSaved={(fields) => {
-                        setProducts((rows) => rows.map((row) => row.id === p.id ? { ...row, ...fields } : row));
-                        if (fields.is_active !== undefined && statusFilter !== "all") {
-                          fetchProducts(products.length === 1 ? Math.max(1, pagination.page - 1) : pagination.page);
-                        }
-                      }}
+                      changes={drafts[p.id]?.changes ?? {}}
+                      error={drafts[p.id]?.error}
+                      saving={savingIds.includes(p.id)}
+                      locked={savingIds.length > 0}
+                      onEdit={changes => edit(p, changes)}
+                      onSave={() => { if (drafts[p.id]) void save([drafts[p.id]]); }}
                     />
                   </tr>
                 );
