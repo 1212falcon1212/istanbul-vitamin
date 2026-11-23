@@ -164,7 +164,7 @@ function LabelSheet({
 
   if (!parcel) return null;
   return (
-    <article className="print-page mx-auto max-w-[100mm] break-inside-avoid rounded-xl border border-slate-300 bg-white p-5 text-slate-950 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:text-black print:shadow-none">
+    <article className="print-page mx-auto max-w-[100mm] rounded-xl border border-slate-300 bg-white p-5 text-slate-950 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:text-black print:shadow-none">
       <header className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
         <Image src="/aras-kargo.svg" alt="Aras Kargo" width={148} height={40} unoptimized className="h-8 w-auto" />
         <span className="text-xs font-semibold">Parça {parcel.sequence} / {parcel.total}</span>
@@ -183,11 +183,21 @@ function LabelSheet({
         <p className="font-semibold">{data.ship_to_town}, {data.ship_to_city}</p>
         <p>{data.ship_to_phone}</p>
       </section>
-      <footer className="border-t-2 border-slate-900 pt-4 text-center">
+      <footer className="break-inside-avoid border-t-2 border-slate-900 pt-4 text-center">
         <svg ref={barcodeRef} aria-label={parcel.barcode_number} className="mx-auto block h-auto max-w-full" />
         <p className="mt-3 text-xs">Sipariş <strong>#{data.order_number}</strong></p>
         {data.integration_code !== data.order_number && <p className="text-xs">Entegrasyon {data.integration_code}</p>}
       </footer>
+      {!!data.product_names?.length && (
+        <section className="mt-3 border-t border-slate-300 pt-2">
+          <h4 className="mb-1 break-after-avoid text-xs font-bold">Siparişteki ürünler</h4>
+          <ul className="list-disc space-y-1 pl-4 text-sm font-medium leading-snug">
+            {data.product_names.map((name, index) => (
+              <li key={index} className="break-inside-avoid [overflow-wrap:anywhere]">{name}</li>
+            ))}
+          </ul>
+        </section>
+      )}
     </article>
   );
 }

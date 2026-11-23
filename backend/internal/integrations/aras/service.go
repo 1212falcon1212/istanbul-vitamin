@@ -340,6 +340,11 @@ func (s *Service) BarcodesFor(orderID uint64) (*LabelData, error) {
 	if err := s.db.First(&order, orderID).Error; err != nil {
 		return nil, errors.New("sipariş bulunamadı")
 	}
+	var productNames []string
+	if err := s.db.Model(&models.OrderItem{}).Where("order_id = ? AND TRIM(product_name) <> ''", orderID).
+		Order("id").Pluck("product_name", &productNames).Error; err != nil {
+		return nil, err
+	}
 	parcelCount := 1
 	if order.ArasParcelCount != nil && *order.ArasParcelCount > 0 {
 		parcelCount = *order.ArasParcelCount
@@ -359,6 +364,7 @@ func (s *Service) BarcodesFor(orderID uint64) (*LabelData, error) {
 		senderName = strings.TrimSpace(contact.SiteName)
 	}
 	return &LabelData{
+		ProductNames:    productNames,
 		OrderNumber:     order.OrderNumber,
 		IntegrationCode: integ,
 		TrackingNumber:  order.TrackingNumber,

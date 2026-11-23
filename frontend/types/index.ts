@@ -243,6 +243,7 @@ export interface ArasParcelBarcode {
 }
 
 export interface ArasLabelData {
+  product_names?: string[] | null;
   order_number: string;
   integration_code: string;
   tracking_number: string;
