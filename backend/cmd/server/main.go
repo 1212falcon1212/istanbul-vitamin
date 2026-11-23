@@ -405,6 +405,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	admin.Get("/orders/:id", orderHandler.AdminGetByID)
 	admin.Get("/orders/:id/receipt", orderHandler.AdminDownloadReceipt)
 	admin.Post("/orders/:id/confirm-transfer", orderHandler.ConfirmTransfer)
+	admin.Post("/orders/:id/approve", orderHandler.Approve)
 	admin.Put("/orders/:id/status", orderHandler.UpdateStatus)
 	admin.Post("/orders/:id/invoice/regenerate", orderHandler.RegenerateInvoice)
 

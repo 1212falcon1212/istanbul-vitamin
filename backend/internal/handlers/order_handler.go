@@ -4,6 +4,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/istanbulvitamin/backend/internal/database"
@@ -297,6 +298,30 @@ func (h *OrderHandler) AdminGetByID(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, fiber.Map{
 		"order": order,
 	})
+}
+
+// Approve records fulfillment approval separately from payment and shipping.
+func (h *OrderHandler) Approve(c *fiber.Ctx) error {
+	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	if err != nil || id == 0 {
+		return utils.BadRequest(c, "Geçersiz sipariş ID'si")
+	}
+	result := database.DB.Model(&models.Order{}).
+		Where("id = ? AND status = ? AND approved_at IS NULL", id, "pending").
+		Update("approved_at", time.Now())
+	if result.Error != nil {
+		return utils.InternalError(c)
+	}
+	if result.RowsAffected == 0 {
+		var order models.Order
+		if err := database.DB.Select("status", "approved_at").First(&order, id).Error; err != nil {
+			return utils.NotFound(c, "Sipariş")
+		}
+		if order.Status != "pending" || order.ApprovedAt == nil {
+			return utils.BadRequest(c, "Sipariş bu durumda onaylanamaz")
+		}
+	}
+	return utils.SuccessMessageResponse(c, "Sipariş onaylandı")
 }
 
 // UpdateStatus siparis durumunu gunceller.

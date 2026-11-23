@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import ProductQuickActions from "./ProductQuickActions";
+import ProductRowEditor from "./ProductRowEditor";
 import AdminShell from "@/components/admin/AdminShell";
 import Pagination from "@/components/ui/Pagination";
 import Spinner from "@/components/ui/Spinner";
 import { api } from "@/lib/api";
-import { formatPrice } from "@/lib/utils";
 import type { Product, Pagination as PaginationType } from "@/types";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -181,12 +180,13 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-text-secondary">
-                <th className="px-4 py-3 font-medium w-[38%]">Ürün</th>
+                <th className="px-4 py-3 font-medium min-w-60">Ürün</th>
                 <th className="px-4 py-3 font-medium">Marka</th>
                 <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 font-medium text-right whitespace-nowrap">Liste fiyatı</th>
+                <th className="px-4 py-3 font-medium text-right whitespace-nowrap">Perakende fiyatı</th>
                 <th className="px-4 py-3 font-medium text-right whitespace-nowrap">İndirimli fiyat</th>
                 <th className="px-4 py-3 font-medium text-right">KDV</th>
+                <th className="px-4 py-3 font-medium">Miat</th>
                 <th className="px-4 py-3 font-medium text-right">Stok</th>
                 <th className="px-4 py-3 font-medium">Durum</th>
                 <th className="px-4 py-3 font-medium text-right">İşlemler</th>
@@ -195,10 +195,6 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-border">
               {visibleProducts.map((p) => {
                 const img = p.images?.find((i) => i.is_primary) ?? p.images?.[0];
-                const listPrice = Math.max(p.price, p.compare_price ?? 0);
-                const discounted = listPrice > p.price;
-                const isLow = p.stock <= p.low_stock_threshold;
-                const outOfStock = p.stock === 0;
                 return (
                   <tr key={p.id} className="hover:bg-primary-soft/20 transition-colors">
                     {/* Ürün */}
@@ -245,70 +241,18 @@ export default function ProductsPage() {
                       {p.sku}
                     </td>
 
-                    {/* Fiyat */}
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span className={discounted ? "text-text-secondary line-through" : "font-medium"}>
-                        {formatPrice(listPrice)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {discounted ? <strong className="font-medium text-primary">{formatPrice(p.price)}</strong> : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">%{p.tax_rate}</td>
-
-                    {/* Stok */}
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                          outOfStock
-                            ? "bg-red-50 text-red-600"
-                            : isLow
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-green-50 text-green-700"
-                        }`}
-                      >
-                        {p.stock}
-                      </span>
-                    </td>
-
-                    {/* Durum */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                            p.is_active
-                              ? "bg-green-50 text-green-700"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              p.is_active ? "bg-green-500" : "bg-gray-400"
-                            }`}
-                          />
-                          {p.is_active ? "Aktif" : "Pasif"}
-                        </span>
-                        {p.is_featured && (
-                          <span className="inline-flex items-center rounded-full bg-primary-soft text-primary px-2 py-0.5 text-[11px] font-medium">
-                            Öne Çıkan
-                          </span>
-                        )}
-                        {p.is_campaign && (
-                          <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px] font-medium">
-                            Kampanyalı
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Aksiyonlar */}
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <ProductQuickActions product={p} onDelete={() => handleDelete(p)} onSaved={(statusChanged) => fetchProducts(
+                    <ProductRowEditor product={p} onDelete={() => handleDelete(p)}
+                      onRefresh={(statusChanged) => fetchProducts(
                         statusChanged && statusFilter !== "all" && products.length === 1
-                          ? Math.max(1, pagination.page - 1)
-                          : pagination.page
-                      )} />
-                    </td>
+                          ? Math.max(1, pagination.page - 1) : pagination.page
+                      )}
+                      onSaved={(fields) => {
+                        setProducts((rows) => rows.map((row) => row.id === p.id ? { ...row, ...fields } : row));
+                        if (fields.is_active !== undefined && statusFilter !== "all") {
+                          fetchProducts(products.length === 1 ? Math.max(1, pagination.page - 1) : pagination.page);
+                        }
+                      }}
+                    />
                   </tr>
                 );
               })}

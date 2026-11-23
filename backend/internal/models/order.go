@@ -10,6 +10,8 @@ type Order struct {
 	MarketplaceOrderID string  `gorm:"type:varchar(100)" json:"marketplace_order_id,omitempty"`
 	Status             string  `gorm:"type:enum('pending','shipped','delivered','cancelled','refunded');default:'pending';index" json:"status"`
 
+	ApprovedAt *time.Time `json:"approved_at,omitempty"`
+
 	// Prices
 	Subtotal       float64 `gorm:"type:decimal(10,2);not null" json:"subtotal"`
 	ShippingCost   float64 `gorm:"type:decimal(10,2);default:0" json:"shipping_cost"`

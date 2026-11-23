@@ -45,6 +45,7 @@ export interface Product {
   compare_price?: number;
   cost_price?: number;
   currency: string;
+  expiry_date?: string;
   stock: number;
   low_stock_threshold: number;
   weight?: number;
@@ -141,6 +142,7 @@ export interface Order {
   user_id: number | null;
   source: OrderSource;
   status: OrderStatus;
+  approved_at?: string;
   subtotal: number;
   shipping_cost: number;
   discount_amount: number;

@@ -161,56 +161,10 @@ func (c *Client) BuildPayload(order *models.Order) (addInvoicePayload, error) {
 		customerID = fmt.Sprintf("user-%d", *order.UserID)
 	}
 
-	details := make([]invoiceDetail, 0, len(order.Items))
-	var sumGross, sumNet, sumTax float64
-
-	for _, it := range order.Items {
-		taxRate := c.cfg.DefaultTaxRate
-		if it.TaxRate != nil && *it.TaxRate > 0 {
-			taxRate = *it.TaxRate
-		}
-		qty := float64(it.Quantity)
-		gross := round2(it.UnitPrice * qty)
-		// Bizimhesap KDV dahil fiyat kabul ediyor; bizim unit_price KDV dahil olduğu için
-		// net = gross / (1 + taxRate/100), tax = gross - net şeklinde ayrıştırıyoruz.
-		net := round2(gross / (1 + taxRate/100))
-		tax := round2(gross - net)
-		total := round2(net + tax)
-
-		productID := ""
-		if it.ProductID != nil {
-			productID = fmt.Sprintf("%d", *it.ProductID)
-		}
-
-		details = append(details, invoiceDetail{
-			ProductID:   productID,
-			ProductName: it.ProductName,
-			Barcode:     it.ProductSKU,
-			TaxRate:     taxRate,
-			Quantity:    qty,
-			UnitPrice:   round2(it.UnitPrice),
-			GrossPrice:  gross,
-			Net:         net,
-			Tax:         tax,
-			Total:       total,
-		})
-
-		sumGross += gross
-		sumNet += net
-		sumTax += tax
+	details, amounts, err := c.invoiceLines(order)
+	if err != nil {
+		return addInvoicePayload{}, err
 	}
-
-	// Kargo ve kupon/indirim sipariş başına tutulduğu için
-	// net toplamı mevcut kalemlerden hesaplanır; kargo ayrı bir detay olarak eklenmez
-	// (isteyene göre genişletilebilir).
-	discount := round2(order.DiscountAmount + order.CouponDiscount)
-	amountNet := round2(sumNet - discount)
-	if amountNet < 0 {
-		amountNet = 0
-	}
-	amountTax := round2(sumTax)
-	amountTotal := round2(amountNet + amountTax + order.ShippingCost)
-	amountGross := round2(sumGross + order.ShippingCost)
 
 	invoiceDate := order.CreatedAt
 	if invoiceDate.IsZero() {
@@ -237,14 +191,7 @@ func (c *Client) BuildPayload(order *models.Order) (addInvoicePayload, error) {
 			Phone:      firstNonEmpty(order.BillingPhone, order.ShippingPhone),
 		},
 		Details: details,
-		Amounts: invoiceAmounts{
-			Currency: "TL",
-			Gross:    amountGross,
-			Discount: discount,
-			Net:      amountNet,
-			Tax:      amountTax,
-			Total:    amountTotal,
-		},
+		Amounts: amounts,
 	}
 
 	return payload, nil

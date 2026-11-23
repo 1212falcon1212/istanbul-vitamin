@@ -116,13 +116,13 @@ export default function OrdersPage() {
     },
     {
       key: "actions",
-      label: "",
+      label: "Sipariş işlemleri",
       render: (o) => (
         <div className="flex items-center justify-end gap-2">
           <Link href={`/yonetim/siparisler/${o.id}`} className="text-primary hover:underline text-xs">
             Detay
           </Link>
-          <OrderQuickActions key={o.id} order={o} onInvoiced={() => fetchOrders(pagination.page)} />
+          <OrderQuickActions key={o.id} order={o} onChanged={() => fetchOrders(pagination.page)} />
         </div>
       ),
     },

@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/istanbulvitamin/backend/internal/database"
@@ -370,19 +371,60 @@ func (h *ProductHandler) QuickUpdate(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Geçersiz ürün ID'si")
 	}
 	var req struct {
-		Price    *float64 `json:"price"`
-		IsActive *bool    `json:"is_active"`
+		Price   *float64 `json:"price"`
+		Pricing *struct {
+			Retail     float64  `json:"retail"`
+			Discounted *float64 `json:"discounted"`
+		} `json:"pricing"`
+		Stock      *int    `json:"stock"`
+		ExpiryDate *string `json:"expiry_date"`
+		IsActive   *bool   `json:"is_active"`
 	}
-	if err := c.BodyParser(&req); err != nil || (req.Price == nil && req.IsActive == nil) {
-		return utils.BadRequest(c, "Fiyat veya durum belirtilmelidir")
+	if err := c.BodyParser(&req); err != nil {
+		return utils.BadRequest(c, "Geçersiz istek")
 	}
+	validPrice := func(p float64) bool { return p > 0 && p <= 99999999.99 && math.Round(p*100)/100 == p }
+	fields := map[string]interface{}{}
 	if req.Price != nil {
-		price := *req.Price
-		if price <= 0 || price > 99999999.99 || math.Round(price*100)/100 != price {
-			return utils.BadRequest(c, "Geçerli bir fiyat girin (en fazla iki ondalık basamak)")
+		if !validPrice(*req.Price) || req.Pricing != nil {
+			return utils.BadRequest(c, "Geçerli bir satış fiyatı girin")
+		}
+		fields["price"] = *req.Price
+	}
+	if pricing := req.Pricing; pricing != nil {
+		if !validPrice(pricing.Retail) {
+			return utils.BadRequest(c, "Geçerli bir perakende fiyatı girin")
+		}
+		fields["price"], fields["compare_price"] = pricing.Retail, nil
+		if discount := pricing.Discounted; discount != nil {
+			if !validPrice(*discount) || *discount >= pricing.Retail {
+				return utils.BadRequest(c, "İndirimli fiyat pozitif ve perakende fiyatından düşük olmalıdır")
+			}
+			fields["price"], fields["compare_price"] = *discount, pricing.Retail
 		}
 	}
-	if err := h.service.UpdatePriceOrStatus(id, req.Price, req.IsActive); err != nil {
+	if req.Stock != nil {
+		if *req.Stock < 0 || *req.Stock > math.MaxInt32 {
+			return utils.BadRequest(c, "Geçerli bir stok adedi girin")
+		}
+		fields["stock"] = *req.Stock
+	}
+	if req.ExpiryDate != nil {
+		fields["expiry_date"] = nil
+		if *req.ExpiryDate != "" {
+			if _, err := time.Parse(time.DateOnly, *req.ExpiryDate); err != nil || *req.ExpiryDate < "1000-01-01" {
+				return utils.BadRequest(c, "Geçerli bir miat tarihi girin")
+			}
+			fields["expiry_date"] = *req.ExpiryDate
+		}
+	}
+	if req.IsActive != nil {
+		fields["is_active"] = *req.IsActive
+	}
+	if len(fields) == 0 {
+		return utils.BadRequest(c, "Güncellenecek alan bulunamadı")
+	}
+	if err := h.service.UpdateListingFields(id, fields); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return utils.NotFound(c, "Ürün")
 		}

@@ -122,7 +122,7 @@ export default function OrderDetailPage() {
 
   const allowedStatuses = ALLOWED_TRANSITIONS[order.status] ?? [order.status];
   const terminal = order.status === "cancelled" || order.status === "refunded";
-  const showInvoiceCard = order.status !== "pending" && order.status !== "cancelled";
+  const showInvoiceCard = (!!order.approved_at || order.status !== "pending") && order.status !== "cancelled" && (order.status !== "refunded" || !!order.bizimhesap_invoice_id);
 
   return (
     <AdminShell title="Sipariş Detayı">

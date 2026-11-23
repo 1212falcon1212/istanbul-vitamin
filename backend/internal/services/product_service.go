@@ -352,14 +352,7 @@ func (s *ProductService) AdminList(params ProductListParams) ([]models.Product, 
 	return s.List(params)
 }
 
-func (s *ProductService) UpdatePriceOrStatus(id uint64, price *float64, active *bool) error {
-	fields := map[string]interface{}{}
-	if price != nil {
-		fields["price"] = *price
-	}
-	if active != nil {
-		fields["is_active"] = *active
-	}
+func (s *ProductService) UpdateListingFields(id uint64, fields map[string]interface{}) error {
 	result := s.db.Model(&models.Product{}).Where("id = ?", id).Updates(fields)
 	if result.Error != nil {
 		return result.Error

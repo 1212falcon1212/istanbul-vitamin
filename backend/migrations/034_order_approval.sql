@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN approved_at DATETIME(3) NULL;
