@@ -23,18 +23,8 @@ type Client struct {
 
 // NewClient hazır bir Client döndürür.
 func NewClient(cfg Config) *Client {
-	r := resty.New().
-		SetTimeout(DefaultTimeout).
-		SetRetryCount(2).
-		SetRetryWaitTime(500 * time.Millisecond).
-		SetRetryMaxWaitTime(3 * time.Second)
-	// SetOrder gibi yazma çağrılarında retry yan etkili olabilir (Aras 20 update
-	// limiti var). Bu yüzden sadece network/IO seviyesindeki hatalarda yeniden
-	// deniyoruz — HTTP 500 dönmüş ise body büyük ihtimalle SOAP fault içeriyordur,
-	// retry zararlı.
-	r.AddRetryCondition(func(resp *resty.Response, err error) bool {
-		return err != nil && resp == nil
-	})
+	// Mutating SOAP calls must not be replayed after an ambiguous network failure.
+	r := resty.New().SetTimeout(DefaultTimeout).SetRedirectPolicy(resty.NoRedirectPolicy())
 	if cfg.PayorTypeCode == "" {
 		cfg.PayorTypeCode = "1"
 	}

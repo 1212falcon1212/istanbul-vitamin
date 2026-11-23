@@ -20,7 +20,8 @@ const secretKeyMask = "********"
 
 // secretKeys public-redakte edilecek key listesi (API'da boşaltılır).
 var secretKeys = map[string]bool{
-	"aras.password": true,
+	"aras.password":       true,
+	"aras.query_password": true,
 }
 
 const (
@@ -188,6 +189,8 @@ func (s *SettingService) ArasConfig() (aras.Config, error) {
 		UserName:          strings.TrimSpace(all["aras.username"]),
 		Password:          strings.TrimSpace(all["aras.password"]),
 		CustomerCode:      strings.TrimSpace(all["aras.customer_code"]),
+		QueryUserName:     strings.TrimSpace(all["aras.query_username"]),
+		QueryPassword:     strings.TrimSpace(all["aras.query_password"]),
 		SenderAddressID:   strings.TrimSpace(all["aras.sender_address_id"]),
 		PayorTypeCode:     strings.TrimSpace(all["aras.payor_type_code"]),
 		IntegrationPrefix: strings.TrimSpace(all["aras.integration_prefix"]),

@@ -106,7 +106,7 @@ func (h *ArasHandler) RegisterSender(c *fiber.Ctx) error {
 	})
 }
 
-// TestConnection POST /admin/settings/aras/test — mevcut creds ile dummy SaveAddress denemesi.
+// TestConnection checks the configured sender address without creating a record.
 func (h *ArasHandler) TestConnection(c *fiber.Ctx) error {
 	type testReq struct {
 		UserName     string `json:"username"`
@@ -142,17 +142,7 @@ func (h *ArasHandler) TestConnection(c *fiber.Ctx) error {
 	client := aras.NewClient(cfg)
 	ctx, cancel := h.ctx(c)
 	defer cancel()
-	// SaveAddress ping — gerçekten kayıt oluşturur, ama "TEST-" prefix ile etiketliyoruz.
-	dummy := aras.SaveAddressRequest{
-		CustomerAddressID: "TEST-CONN-" + strconv.FormatInt(time.Now().Unix(), 10),
-		Name:              "Test Bağlantı",
-		CompleteAddress:   "Test adres",
-		PhoneNumber:       "02164158766", // 11 hane, Aras formatı
-		EMail:             "test@test.com",
-		CityName:          "İSTANBUL",
-		TownName:          "BEYKOZ",
-	}
-	id, _, err := client.SaveAddress(ctx, dummy)
+	_, err = client.CheckSenderAddress(ctx)
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"ok":      false,
@@ -163,6 +153,22 @@ func (h *ArasHandler) TestConnection(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, fiber.Map{
 		"ok":                true,
 		"message":           "Aras Kargo bağlantısı başarılı",
-		"sample_address_id": id,
+		"sender_address_id": cfg.SenderAddressID,
 	})
+}
+
+// TestQuery checks the saved query account using a non-shipment reference.
+func (h *ArasHandler) TestQuery(c *fiber.Ctx) error {
+	cfg, err := h.settings.ArasConfig()
+	if err != nil {
+		return utils.InternalError(c)
+	}
+	cfg.Enabled = true
+	ctx, cancel := h.ctx(c)
+	defer cancel()
+	_, _, err = aras.NewClient(cfg).QueryTracking(ctx, "IV-CHECK-"+strconv.FormatInt(time.Now().Unix(), 10))
+	if err != nil {
+		return utils.BadRequest(c, err.Error())
+	}
+	return utils.SuccessResponse(c, fiber.Map{"message": "Sorgulama servisi test referansına yanıt verdi. Takip verisini doğrulamak için kayıtlı bir gönderiyi sorgulayın."})
 }

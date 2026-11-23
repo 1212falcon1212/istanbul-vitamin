@@ -7,34 +7,38 @@ import (
 	"strings"
 )
 
-// QueryTracking GetQueryXML QueryType=1 ile takip numarasının güncel durumunu sorgular.
+// QueryTracking GetQueryXML QueryType=1 ile entegrasyon kodunun güncel durumunu sorgular.
 // Aras XML formatında DURUMKODU + DURUM + tarihler döner.
-func (c *Client) QueryTracking(ctx context.Context, trackingNo string) (QueryResult, SOAPCall, error) {
-	if err := c.validateConfig(); err != nil {
-		return QueryResult{}, SOAPCall{}, err
+func (c *Client) QueryTracking(ctx context.Context, integrationCode string) (QueryResult, SOAPCall, error) {
+	if !c.cfg.Enabled {
+		return QueryResult{}, SOAPCall{}, ErrConfigDisabled
+	}
+	username, password := c.cfg.UserName, c.cfg.Password
+	if c.cfg.QueryUserName != "" {
+		username, password = c.cfg.QueryUserName, c.cfg.QueryPassword
+	}
+	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
+		return QueryResult{}, SOAPCall{}, ErrConfigMissing
 	}
 
-	loginInfo := fmt.Sprintf(`<![CDATA[<Root><LoginInfo><UserName>%s</UserName><Password>%s</Password><CustomerCode>%s</CustomerCode></LoginInfo></Root>]]>`,
-		xmlEscape(c.cfg.UserName),
-		xmlEscape(c.cfg.Password),
-		xmlEscape(c.cfg.CustomerCode),
-	)
-	queryInfo := fmt.Sprintf(`<![CDATA[<Root><QueryInfo><CargoTrackingNumber>%s</CargoTrackingNumber></QueryInfo></Root>]]>`,
-		xmlEscape(trackingNo),
-	)
+	if strings.TrimSpace(c.cfg.CustomerCode) == "" {
+		return QueryResult{}, SOAPCall{}, fmt.Errorf("aras sorgulama müşteri kodu eksik")
+	}
+	loginInfo := xmlEscape(fmt.Sprintf(`<LoginInfo><UserName>%s</UserName><Password>%s</Password><CustomerCode>%s</CustomerCode></LoginInfo>`,
+		xmlEscape(username), xmlEscape(password), xmlEscape(c.cfg.CustomerCode)))
+	queryInfo := xmlEscape(fmt.Sprintf(`<QueryInfo><QueryType>1</QueryType><IntegrationCode>%s</IntegrationCode></QueryInfo>`, xmlEscape(integrationCode)))
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <soap:Body>
     <GetQueryXML xmlns="http://tempuri.org/">
-      <queryType>1</queryType>
       <loginInfo>%s</loginInfo>
       <queryInfo>%s</queryInfo>
     </GetQueryXML>
   </soap:Body>
 </soap:Envelope>`, loginInfo, queryInfo)
 
-	call := c.post(ctx, c.cfg.IntegrationURL(), "http://tempuri.org/GetQueryXML", body)
+	call := c.post(ctx, c.cfg.IntegrationURL(), "http://tempuri.org/IArasCargoIntegrationService/GetQueryXML", body)
 	if call.Err != nil {
 		return QueryResult{}, call, call.Err
 	}
@@ -42,29 +46,24 @@ func (c *Client) QueryTracking(ctx context.Context, trackingNo string) (QueryRes
 		return QueryResult{}, call, err
 	}
 
-	out := QueryResult{TrackingNumber: trackingNo, RawXML: call.Response}
-
-	// Aras yanıt gövdesinde <GetQueryXMLResult>...</GetQueryXMLResult> içinde XML
-	// dize olarak gömülü gelir; o XML'i ham olarak parse ediyoruz (kaba string parse,
-	// çünkü kaynak farklı kabuk yapıları gösteriyor). Hem büyük harf hem küçük harf
-	// alan adlarına karşı dayanıklıyız.
-	durum := firstNonEmpty(
-		extractBetween(call.Response, "<DURUMKODU>", "</DURUMKODU>"),
-		extractBetween(call.Response, "<DURUM_KODU>", "</DURUM_KODU>"),
-		extractBetween(call.Response, "<DurumKodu>", "</DurumKodu>"),
-		extractBetween(call.Response, "<StatusCode>", "</StatusCode>"),
-	)
-	if durum != "" {
-		if v, err := strconv.Atoi(strings.TrimSpace(durum)); err == nil {
-			out.DurumKodu = v
-		}
+	fields, err := responseFields(call.Response)
+	if err != nil {
+		return QueryResult{}, call, err
 	}
-	out.DurumText = firstNonEmpty(
-		extractBetween(call.Response, "<DURUM>", "</DURUM>"),
-		extractBetween(call.Response, "<DurumAciklama>", "</DurumAciklama>"),
-		extractBetween(call.Response, "<StatusText>", "</StatusText>"),
-		statusTextFor(out.DurumKodu),
-	)
+	if !strings.Contains(call.Response, "GetQueryXMLResult") {
+		return QueryResult{}, call, fmt.Errorf("aras sorgulama sonuç alanı eksik")
+	}
+	if msg := field(fields, "GetQueryXMLResult"); msg != "" {
+		return QueryResult{}, call, fmt.Errorf("aras sorgulama hatası: %s", msg)
+	}
+	out := QueryResult{RawXML: call.Response}
+	out.TrackingNumber = field(fields, "TrackingNumber", "KARGO_TAKIP_NO", "KARGO_TAKIP_NUMARASI")
+	out.DurumKodu, _ = strconv.Atoi(field(fields, "DURUM_KODU", "StatusCode"))
+	out.DurumText = firstNonEmpty(field(fields, "DURUMU", "DURUM", "DurumAciklama", "StatusText"), statusTextFor(out.DurumKodu))
+	if out.DurumKodu < 0 || out.DurumKodu > 7 {
+		return out, call, fmt.Errorf("aras bilinmeyen durum kodu: %d", out.DurumKodu)
+	}
+
 	return out, call, nil
 }
 

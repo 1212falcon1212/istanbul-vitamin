@@ -63,10 +63,12 @@ func (c *Client) SaveAddress(ctx context.Context, req SaveAddressRequest) (strin
 
 	// Aras'ın gerçek başarı kontrolü: ResultCode 0 veya 1 (uygulama "1=Kayıt başarılı"
 	// dönüyor; "0" da bazı çağrılarda success). Kalan kodlar hata.
-	if resultCode != "" && resultCode != "0" && resultCode != "1" {
+	if resultCode != "0" && resultCode != "1" {
 		return "", call, fmt.Errorf("aras SaveAddress başarısız: code=%s msg=%s", resultCode, message)
 	}
-	// AddressId yanıttan parse edilememiş olabilir; çağıran zaten ham yanıtı (RawXML)
-	// audit log'da görüyor. Boş string'i hata saymıyoruz çünkü Aras kayıt başarılı dedi.
+	// A usable address ID is required before proceeding to shipment registration.
+	if addressID == "" {
+		return "", call, fmt.Errorf("aras SaveAddress yanıtında AddressId yok")
+	}
 	return addressID, call, nil
 }

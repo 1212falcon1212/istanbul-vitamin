@@ -10,10 +10,13 @@ import (
 // Aynı IntegrationCode ile tekrar çağrılırsa aynı gönderiyi günceller (max 20 update).
 //
 // Aras imzası şu şekilde:
-//   SetOrder(orderInfos[Order], userName, password)
+//
+//	SetOrder(orderInfos[Order], userName, password)
+//
 // Yani envelope iki şeyi birden taşır:
 //   - <orderInfo><Order>...</Order></orderInfo>  → kargo bilgileri
 //   - <userName>, <password>                     → method parametreleri (lowercase, ayrıca)
+//
 // İçteki <Order> alanlarındaki UserName/Password da gerekli (auth çift gönderilir).
 //
 // Başarılı yanıtın hemen ardından KARGO TAKİP NO çekmek için
@@ -53,18 +56,18 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
           <UserName>%s</UserName>
           <Password>%s</Password>
           <TradingWaybillNumber>%s</TradingWaybillNumber>
-          <IntegrationCode>%s</IntegrationCode>
           <ReceiverName>%s</ReceiverName>
           <ReceiverAddress>%s</ReceiverAddress>
           <ReceiverPhone1>%s</ReceiverPhone1>
           <ReceiverCityName>%s</ReceiverCityName>
           <ReceiverTownName>%s</ReceiverTownName>
+          <PieceCount>%d</PieceCount>
+          <IntegrationCode>%s</IntegrationCode>
+          <Description>%s</Description>
           <PayorTypeCode>%s</PayorTypeCode>
           <IsWorldWide>%s</IsWorldWide>
-          <PieceCount>%d</PieceCount>
-          <SenderAccountAddressId>%s</SenderAccountAddressId>
-          <Description>%s</Description>
           %s
+          <SenderAccountAddressId>%s</SenderAccountAddressId>
         </Order>
       </orderInfo>
       <userName>%s</userName>
@@ -75,18 +78,18 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
 		xmlEscape(c.cfg.UserName),
 		xmlEscape(c.cfg.Password),
 		xmlEscape(req.TradingWaybillNumber),
-		xmlEscape(req.IntegrationCode),
 		xmlEscape(SafeReceiverName(req.ReceiverName)),
 		xmlEscape(req.ReceiverAddress),
 		xmlEscape(req.ReceiverPhone1),
 		xmlEscape(UpperTR(req.ReceiverCityName)),
 		xmlEscape(UpperTR(req.ReceiverTownName)),
+		pieceCount,
+		xmlEscape(req.IntegrationCode),
+		xmlEscape(req.Description),
 		xmlEscape(req.PayorTypeCode),
 		xmlEscape(req.IsWorldWide),
-		pieceCount,
-		xmlEscape(req.SenderAccountAddressID),
-		xmlEscape(req.Description),
 		pieces,
+		xmlEscape(req.SenderAccountAddressID),
 		xmlEscape(c.cfg.UserName),
 		xmlEscape(c.cfg.Password),
 	)
@@ -101,10 +104,10 @@ func (c *Client) SetOrder(ctx context.Context, req SetOrderRequest) (SetOrderRes
 
 	resp := SetOrderResponse{
 		ResultCode: extractBetween(call.Response, "<ResultCode>", "</ResultCode>"),
-		Message:    extractBetween(call.Response, "<Message>", "</Message>"),
+		Message:    firstNonEmpty(extractBetween(call.Response, "<ResultMessage>", "</ResultMessage>"), extractBetween(call.Response, "<Message>", "</Message>")),
 	}
 	// Aras "0" ve "1" başarılı kabul ediyor (kayıt oluşturuldu / güncellendi).
-	if resp.ResultCode != "" && resp.ResultCode != "0" && resp.ResultCode != "1" {
+	if resp.ResultCode != "0" && resp.ResultCode != "1" {
 		return resp, call, fmt.Errorf("aras SetOrder başarısız: code=%s msg=%s", resp.ResultCode, resp.Message)
 	}
 	return resp, call, nil

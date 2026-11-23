@@ -14,6 +14,8 @@ type Config struct {
 	TestMode          bool
 	UserName          string
 	Password          string
+	QueryUserName     string
+	QueryPassword     string
 	CustomerCode      string
 	SenderAddressID   string
 	PayorTypeCode     string  // "1"=gönderen öder, "2"=alıcı öder
@@ -23,10 +25,10 @@ type Config struct {
 
 // SOAP endpoint'leri — TestMode bayrağına göre seçilir.
 const (
-	prodServiceURL     = "https://customerservice.araskargo.com.tr/arascargoservice/arascargoservice.asmx"
+	prodServiceURL     = "https://customerws.araskargo.com.tr/arascargoservice.asmx"
 	testServiceURL     = "https://customerservicestest.araskargo.com.tr/arascargoservice/arascargoservice.asmx"
-	prodIntegrationURL = "https://customerservice.araskargo.com.tr/ArasCargoIntegrationService/ArasCargoIntegrationService.svc"
-	testIntegrationURL = "https://customerservicestest.araskargo.com.tr/ArasCargoIntegrationService/ArasCargoIntegrationService.svc"
+	prodIntegrationURL = "https://customerservices.araskargo.com.tr/ArasCargoCustomerIntegrationService/ArasCargoIntegrationService.svc"
+	testIntegrationURL = "https://customerservicestest.araskargo.com.tr/ArasCargoIntegrationService.svc"
 )
 
 // SaveAddressRequest Aras'a gönderici adresi kaydetmek için kullanılır.
@@ -44,18 +46,18 @@ type SaveAddressRequest struct {
 // SetOrderRequest yeni bir kargo gönderimi oluşturur.
 // IntegrationCode bizim sipariş numaramızdır; aynı kod 20 kez güncellenebilir.
 type SetOrderRequest struct {
-	IntegrationCode         string
-	TradingWaybillNumber    string // bizim irsaliye numaramız (boş bırakılırsa Aras üretir)
-	ReceiverName            string // 100 hane, "Argo" geçemez
-	ReceiverAddress         string // 250 hane, "Argo" geçemez
-	ReceiverPhone1          string // 10 hane sayısal (NormalizePhoneTR ile garanti edilir)
-	ReceiverCityName        string
-	ReceiverTownName        string
-	PayorTypeCode           string // "1" veya "2"
-	IsWorldWide             string // "0"=yurtiçi, "1"=yurtdışı
-	SenderAccountAddressID  string // SaveAddress sonrası dönen ID (opsiyonel, varsa kullanılır)
-	Description             string
-	PieceDetails            []PieceDetail
+	IntegrationCode        string
+	TradingWaybillNumber   string // bizim irsaliye numaramız (boş bırakılırsa Aras üretir)
+	ReceiverName           string // 100 hane, "Argo" geçemez
+	ReceiverAddress        string // 250 hane, "Argo" geçemez
+	ReceiverPhone1         string // 10 hane sayısal (NormalizePhoneTR ile garanti edilir)
+	ReceiverCityName       string
+	ReceiverTownName       string
+	PayorTypeCode          string // "1" veya "2"
+	IsWorldWide            string // "0"=yurtiçi, "1"=yurtdışı
+	SenderAccountAddressID string // SaveAddress sonrası dönen ID (opsiyonel, varsa kullanılır)
+	Description            string
+	PieceDetails           []PieceDetail
 }
 
 // PieceDetail bir kargo parçası — Aras parça başı barkod ister.
@@ -75,11 +77,11 @@ type SetOrderResponse struct {
 
 // GetOrderResponse — GetOrderWithIntegrationCode yanıtı; KARGO TAKİP NO içerir.
 type GetOrderResponse struct {
-	ResultCode     string
-	Message        string
-	TrackingNumber string // "KARGO TAKİP NO"
+	ResultCode      string
+	Message         string
+	TrackingNumber  string // "KARGO TAKİP NO"
 	IntegrationCode string
-	RawXML         string // ham XML — debug için
+	RawXML          string // ham XML — debug için
 }
 
 // QueryResult — GetQueryXML QueryType=1 yanıtının ayıklanmış hali.
@@ -116,21 +118,21 @@ type ParcelBarcode struct {
 
 // LabelData etiket modal'ı için backend'in ürettiği snapshot.
 type LabelData struct {
-	OrderNumber        string          `json:"order_number"`
-	IntegrationCode    string          `json:"integration_code"`
-	TrackingNumber     string          `json:"tracking_number"`
-	CargoCompany       string          `json:"cargo_company"`
-	ShipFromName       string          `json:"ship_from_name"`
-	ShipFromPhone      string          `json:"ship_from_phone"`
-	ShipFromAddress    string          `json:"ship_from_address"`
-	ShipFromCity       string          `json:"ship_from_city"`
-	ShipFromTown       string          `json:"ship_from_town"`
-	ShipToName         string          `json:"ship_to_name"`
-	ShipToPhone        string          `json:"ship_to_phone"`
-	ShipToAddress      string          `json:"ship_to_address"`
-	ShipToCity         string          `json:"ship_to_city"`
-	ShipToTown         string          `json:"ship_to_town"`
-	Parcels            []ParcelBarcode `json:"parcels"`
+	OrderNumber     string          `json:"order_number"`
+	IntegrationCode string          `json:"integration_code"`
+	TrackingNumber  string          `json:"tracking_number"`
+	CargoCompany    string          `json:"cargo_company"`
+	ShipFromName    string          `json:"ship_from_name"`
+	ShipFromPhone   string          `json:"ship_from_phone"`
+	ShipFromAddress string          `json:"ship_from_address"`
+	ShipFromCity    string          `json:"ship_from_city"`
+	ShipFromTown    string          `json:"ship_from_town"`
+	ShipToName      string          `json:"ship_to_name"`
+	ShipToPhone     string          `json:"ship_to_phone"`
+	ShipToAddress   string          `json:"ship_to_address"`
+	ShipToCity      string          `json:"ship_to_city"`
+	ShipToTown      string          `json:"ship_to_town"`
+	Parcels         []ParcelBarcode `json:"parcels"`
 }
 
 // ServiceURL TestMode'a göre asmx endpoint'ini döner.

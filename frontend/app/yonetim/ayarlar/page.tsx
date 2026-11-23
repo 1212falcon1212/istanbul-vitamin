@@ -139,9 +139,11 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     fields: [
       { key: "aras.enabled", label: "Aktif", type: "checkbox", hint: "Tüm Aras Kargo akışını aç/kapat" },
       { key: "aras.test_mode", label: "Test Ortamı", type: "checkbox", hint: "Açıkken test sandbox URL'i kullanılır" },
-      { key: "aras.username", label: "Kullanıcı Adı", type: "text" },
-      { key: "aras.password", label: "Şifre", type: "password", placeholder: "••••••••", hint: "Boş bırakılırsa mevcut değer korunur" },
-      { key: "aras.customer_code", label: "Müşteri Kodu", type: "text" },
+      { key: "aras.username", label: "Gönderi servisi kullanıcı adı", type: "text" },
+      { key: "aras.password", label: "Gönderi servisi şifresi", type: "password", placeholder: "••••••••", hint: "Boş bırakılırsa mevcut değer korunur" },
+      { key: "aras.customer_code", label: "Sorgulama Müşteri Kodu", type: "text" },
+      { key: "aras.query_username", label: "Sorgulama Kullanıcı Adı", type: "text", hint: "Sorgulama hesabı farklıysa kullanıcı adı ve şifreyi birlikte girin; sorgulama kullanıcı adı boşsa gönderi hesabı kullanılır." },
+      { key: "aras.query_password", label: "Sorgulama Şifresi", type: "password", placeholder: "••••••••", hint: "Boş bırakılırsa kayıtlı şifre korunur." },
       {
         key: "aras.payor_type_code",
         label: "Ödeme Tipi",
@@ -152,17 +154,25 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
         ],
       },
       { key: "aras.parcel_kg_limit", label: "Parça Başı Maks. Kg", type: "number", hint: "Toplam ağırlığa göre parça sayısı bu limite göre hesaplanır" },
-      { key: "aras.sender_address_id", label: "Gönderici Adres ID", type: "text", readOnly: true, hint: "\"Gönderici Adresimi Aras'a Kaydet\" butonu otomatik doldurur" },
+      { key: "aras.sender_address_id", label: "Sevk Adresi ID", type: "text", hint: "Aras tarafından verilen aktif sevk adresi ID'si; adres kaydıyla da doldurulabilir." },
     ],
     actions: [
       {
-        label: "Bağlantıyı Test Et",
+        label: "Gönderici Bağlantısını Test Et",
         endpoint: "/admin/settings/aras/test",
         method: "POST",
-        requireKeys: ["aras.username", "aras.customer_code"],
+        requireKeys: ["aras.username", "aras.sender_address_id"],
         successMessage: "Aras Kargo bağlantısı başarılı",
       },
       {
+        label: "Sorgulama Servisini Test Et",
+        endpoint: "/admin/settings/aras/test-query",
+        method: "POST",
+        requireKeys: ["aras.customer_code"],
+        successMessage: "Sorgu gönderildi",
+      },
+      {
+        confirm: "Seçili Aras ortamında İletişim sekmesindeki depo bilgileriyle adres kaydı oluşturulsun mu?",
         label: "Gönderici Adresimi Aras'a Kaydet",
         endpoint: "/admin/aras/sender-address/register",
         method: "POST",
@@ -186,6 +196,7 @@ export default function SettingsPage() {
   const { reload: reloadSettings } = useSettings();
   const [activeTab, setActiveTab] = useState("genel");
   const [values, setValues] = useState<Record<string, string>>({});
+  const [savedValues, setSavedValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -193,12 +204,24 @@ export default function SettingsPage() {
 
   const currentTab = tabs.find((t) => t.id === activeTab);
 
+  const arasDirty = activeTab === "aras_kargo" && currentTab?.fields.some((f) => (values[f.key] ?? "") !== (savedValues[f.key] ?? ""));
+  useEffect(() => {
+    const readTab = () => {
+      const tab = window.location.hash.slice(1);
+      if (tabs.some(t => t.id === tab)) setActiveTab(tab);
+    };
+    readTab();
+    window.addEventListener("hashchange", readTab);
+    return () => window.removeEventListener("hashchange", readTab);
+  }, []);
+
   const fetchSettings = useCallback(async (group: string) => {
     setLoading(true);
     setError("");
     try {
       const res = await api.get<{settings: Record<string,string>}>("/admin/settings");
       setValues(res.data?.settings ?? {});
+      setSavedValues(res.data?.settings ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ayarlar yuklenemedi");
     } finally {
@@ -222,6 +245,7 @@ export default function SettingsPage() {
         group: activeTab,
       }));
       await api.put("/admin/settings", { settings: payload });
+      await fetchSettings(activeTab);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       // Marka/logo değişimi header + footer'a yansısın.
@@ -243,7 +267,7 @@ export default function SettingsPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { window.location.hash = tab.id; setActiveTab(tab.id); }}
             className={cn(
               "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
               activeTab === tab.id
@@ -271,6 +295,7 @@ export default function SettingsPage() {
 
       {!loading && currentTab && (
         <div className="bg-card-bg rounded-xl border border-border p-6 max-w-2xl">
+          {activeTab === "aras_kargo" && <p className="mb-5 text-sm text-text-secondary">Aras’ın seçili ortam için verdiği web servis bilgilerini girip kaydedin. Gönderici testi sevk adresini doğrular. Depo adı, adresi ve telefonu İletişim sekmesindedir.</p>}
           <div className="space-y-4">
             {currentTab.fields.map((field) => (
               <div key={field.key}>
@@ -376,12 +401,14 @@ export default function SettingsPage() {
 
           {currentTab.actions && currentTab.actions.length > 0 && (
             <div className="mt-6 pt-6 border-t border-border flex flex-col gap-3 max-w-md">
+              {arasDirty && <p className="text-xs text-text-secondary">Testten önce değişiklikleri kaydedin.</p>}
               {currentTab.actions.map((action) => (
                 <TabAction
                   key={action.endpoint + action.label}
+                  disabled={Boolean(arasDirty || saving)}
                   action={action}
                   values={values}
-                  onResult={(updates) => setValues((prev) => ({ ...prev, ...updates }))}
+                  onResult={(updates) => { setValues((prev) => ({ ...prev, ...updates })); setSavedValues((prev) => ({ ...prev, ...updates })); }}
                 />
               ))}
             </div>
@@ -393,10 +420,12 @@ export default function SettingsPage() {
 }
 
 function TabAction({
+  disabled,
   action,
   values,
   onResult,
 }: {
+  disabled: boolean;
   action: SettingTabAction;
   values: Record<string, string>;
   onResult: (updates: Record<string, string>) => void;
@@ -428,7 +457,7 @@ function TabAction({
         });
         if (Object.keys(updates).length > 0) onResult(updates);
       }
-      setMsg({ kind: "success", text: action.successMessage ?? "Tamamlandı" });
+      setMsg({ kind: "success", text: typeof data.message === "string" ? data.message : action.successMessage ?? "Tamamlandı" });
     } catch (err) {
       setMsg({
         kind: "error",
@@ -443,7 +472,7 @@ function TabAction({
     <div>
       <button
         onClick={run}
-        disabled={busy}
+        disabled={busy || disabled}
         className="w-full h-10 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
       >
         {busy ? "İşleniyor…" : action.label}

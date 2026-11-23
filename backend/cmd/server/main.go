@@ -474,6 +474,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	admin.Put("/settings", settingHandler.Update)
 	admin.Post("/settings/bizimhesap/test", settingHandler.TestBizimhesap)
 	admin.Post("/settings/aras/test", arasHandler.TestConnection)
+	admin.Post("/settings/aras/test-query", arasHandler.TestQuery)
 
 	// Admin - Customers
 	customerHandler := handlers.NewCustomerHandler()

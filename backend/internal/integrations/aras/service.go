@@ -66,11 +66,11 @@ func (s *Service) log(orderID uint64, op string, call SOAPCall) {
 	rec := models.ArasShipmentLog{
 		OrderID:     orderID,
 		Op:          op,
-		RequestXML:  call.Request,
-		ResponseXML: call.Response,
+		RequestXML:  redactSOAP(call.Request),
+		ResponseXML: redactSOAP(call.Response),
 	}
 	if call.Err != nil {
-		rec.Error = truncate(call.Err.Error(), 500)
+		rec.Error = truncate(redactSOAP(call.Err.Error()), 500)
 	}
 	rec.StatusCode = extractBetween(call.Response, "<ResultCode>", "</ResultCode>")
 	if err := s.db.Create(&rec).Error; err != nil {
@@ -183,16 +183,7 @@ func (s *Service) CreateShipment(ctx context.Context, orderID uint64) error {
 		}
 	}
 
-	// Aras `SaveAddress` API'sinin dönen ID'si "adres defteri" kaydıdır, gerçek
-	// "Sevk Adresi" değil — bu yüzden test/early prod'da SenderAccountAddressID
-	// olarak gönderilirse Aras "1006 sevk adresi bulunamadı" döner.
-	// Gerçek Sevk Adres ID'leri Aras Bölge Satış Temsilcisi tarafından tanımlanıyor.
-	// Boş gönderdiğimizde Aras varsayılan sevk adresini kullanır.
 	senderAddrID := strings.TrimSpace(c.cfg.SenderAddressID)
-	// SaveAddress GUID formatı (32 hex char) → adres defteri ID'si, boş geç.
-	if len(senderAddrID) == 32 && !strings.ContainsAny(senderAddrID, "-_/") {
-		senderAddrID = ""
-	}
 
 	setReq := SetOrderRequest{
 		IntegrationCode:        integrationCode,
@@ -245,10 +236,10 @@ func (s *Service) RefreshStatus(ctx context.Context, orderID uint64) error {
 	if err := s.db.First(&order, orderID).Error; err != nil {
 		return errors.New("sipariş bulunamadı")
 	}
-	if strings.TrimSpace(order.TrackingNumber) == "" {
+	if strings.TrimSpace(order.ArasIntegrationCode) == "" {
 		return ErrNoTracking
 	}
-	res, call, err := c.QueryTracking(ctx, order.TrackingNumber)
+	res, call, err := c.QueryTracking(ctx, order.ArasIntegrationCode)
 	s.log(orderID, "query", call)
 	if err != nil {
 		return err
@@ -304,7 +295,7 @@ func (s *Service) PollStatuses(ctx context.Context) (int, error) {
 	var orders []models.Order
 	q := s.db.
 		Where("status = ?", "shipped").
-		Where("tracking_number <> ''").
+		Where("aras_integration_code <> ''").
 		Where("aras_status_code IS NULL OR aras_status_code < 6").
 		Order("aras_status_checked_at IS NULL DESC, aras_status_checked_at ASC").
 		Limit(50)
@@ -319,7 +310,7 @@ func (s *Service) PollStatuses(ctx context.Context) (int, error) {
 		default:
 		}
 		o := &orders[i]
-		res, call, err := c.QueryTracking(ctx, o.TrackingNumber)
+		res, call, err := c.QueryTracking(ctx, o.ArasIntegrationCode)
 		s.log(o.ID, "query", call)
 		if err != nil {
 			log.Printf("[aras] poll: order=%d err=%v", o.ID, err)
