@@ -134,6 +134,15 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
     ],
   },
   {
+    id: "paytr",
+    label: "PayTR",
+    fields: [
+      { key: "paytr.merchant_id", label: "Mağaza numarası (merchant_id)", type: "text" },
+      { key: "paytr.merchant_key", label: "Mağaza parolası (merchant_key)", type: "password" },
+      { key: "paytr.merchant_salt", label: "Mağaza gizli anahtarı (merchant_salt)", type: "password" },
+    ],
+  },
+  {
     id: "aras_kargo",
     label: "Aras Kargo",
     fields: [
@@ -301,6 +310,7 @@ export default function SettingsPage() {
 
       {!loading && currentTab && (
         <div className="bg-card-bg rounded-xl border border-border p-6 max-w-2xl">
+          {activeTab === "paytr" && <p className="mb-5 text-sm text-text-secondary">PayTR Mağaza Paneli’ndeki Bilgi sayfasından üç değeri girin. Kayıtlı parolayı ve gizli anahtarı korumak için bu alanları boş bırakabilirsiniz.</p>}
           {activeTab === "aras_kargo" && <p className="mb-5 text-sm text-text-secondary">Aras’ın seçili ortam için verdiği web servis bilgilerini girip kaydedin. Gönderici testi sevk adresini doğrular. Boş bırakılan çıkış deposu alanlarında genel iletişim bilgileri kullanılır.</p>}
           <div className="space-y-4">
             {currentTab.fields.map((field) => (
@@ -367,7 +377,8 @@ export default function SettingsPage() {
                     type="password"
                     className={inputCls}
                     value={values[field.key] === "********" ? "" : values[field.key] ?? ""}
-                    placeholder={field.placeholder ?? "••••••••"}
+                    autoComplete="new-password"
+                    placeholder={activeTab === "paytr" ? (savedValues[field.key] ? "Kayıtlı" : "Henüz girilmedi") : field.placeholder ?? "••••••••"}
                     onChange={(e) =>
                       setValues((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
@@ -395,7 +406,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 mt-6 flex-wrap">
             <button
               onClick={handleSave}
-              disabled={saving || loading || !!error}
+              disabled={saving || loading || !!error || (activeTab === "paytr" && !currentTab.fields.every(f => (values[f.key] || (f.type === "password" && savedValues[f.key]) || "").trim()))}
               className="px-6 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {saving ? "Kaydediliyor..." : "Kaydet"}

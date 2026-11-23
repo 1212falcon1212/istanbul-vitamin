@@ -20,6 +20,8 @@ const secretKeyMask = "********"
 
 // secretKeys public-redakte edilecek key listesi (API'da boşaltılır).
 var secretKeys = map[string]bool{
+	"paytr.merchant_key":  true,
+	"paytr.merchant_salt": true,
 	"aras.password":       true,
 	"aras.query_password": true,
 }
@@ -81,11 +83,19 @@ func (s *SettingService) Update(settings []models.Setting) error {
 		for _, row := range rows {
 			merged[row.Key] = row.Value
 		}
+		paytrChanged := false
 		for i := range settings {
+			if strings.HasPrefix(settings[i].Key, "paytr.") {
+				paytrChanged = true
+				settings[i].Value = strings.TrimSpace(settings[i].Value)
+			}
 			if settings[i].Key == "bank_transfer_iban" {
 				settings[i].Value = strings.ToUpper(strings.Join(strings.Fields(settings[i].Value), ""))
 			}
 			merged[settings[i].Key] = settings[i].Value
+		}
+		if paytrChanged && (merged["paytr.merchant_id"] == "" || merged["paytr.merchant_key"] == "" || merged["paytr.merchant_salt"] == "") {
+			return errors.New("PayTR mağaza numarası, parolası ve gizli anahtarı gereklidir")
 		}
 		if merged["bank_transfer_enabled"] == "true" && !BankTransferReady(merged) {
 			return errors.New("Havale için geçerli TR IBAN, banka adı ve hesap sahibi gereklidir")

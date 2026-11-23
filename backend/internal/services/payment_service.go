@@ -58,6 +58,28 @@ func NewPaymentService(db *gorm.DB, cfg *config.Config) *PaymentService {
 	}
 }
 
+// payTRCredentials reads the current admin settings for every operation.
+func (s *PaymentService) payTRCredentials() (id, key, salt string, err error) {
+	var rows []models.Setting
+	if err = s.db.Select("key", "value").Where("`key` IN ?", []string{
+		"paytr.merchant_id", "paytr.merchant_key", "paytr.merchant_salt",
+	}).Find(&rows).Error; err != nil {
+		return "", "", "", errors.New("PayTR ayarları okunamadı")
+	}
+	id, key, salt = s.cfg.PayTRMerchantID, s.cfg.PayTRMerchantKey, s.cfg.PayTRMerchantSalt
+	for _, row := range rows {
+		switch row.Key {
+		case "paytr.merchant_id":
+			id = strings.TrimSpace(row.Value)
+		case "paytr.merchant_key":
+			key = strings.TrimSpace(row.Value)
+		case "paytr.merchant_salt":
+			salt = strings.TrimSpace(row.Value)
+		}
+	}
+	return id, key, salt, nil
+}
+
 // StartPayment PayTR odeme istegi olusturur ve 3D Secure yonlendirme URL'i dondurur.
 func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) (*PaymentResult, error) {
 	var order models.Order
@@ -100,9 +122,10 @@ func (s *PaymentService) StartPayment(orderID uint64, cardData CardPaymentData) 
 	if err := s.db.Model(&order).Update("payment_card_last_four", lastFour).Error; err != nil {
 		return nil, err
 	}
-	merchantID := s.cfg.PayTRMerchantID
-	merchantKey := s.cfg.PayTRMerchantKey
-	merchantSalt := s.cfg.PayTRMerchantSalt
+	merchantID, merchantKey, merchantSalt, err := s.payTRCredentials()
+	if err != nil {
+		return nil, err
+	}
 
 	// DEV BYPASS — PayTR config yok ise (geliştirme ortamı için)
 	// Gerçek ödeme çağrısı atmadan siparişe sahte bir payment_id yaz ve başarılı dön.
@@ -252,10 +275,17 @@ func (s *PaymentService) HandleCallback(data map[string]string) error {
 	}
 
 	// Hash dogrulamasi: merchant_oid + merchant_salt + status + total_amount
-	hashStr := merchantOID + s.cfg.PayTRMerchantSalt + status + totalAmount
-	expectedHash := s.generateHash(hashStr, s.cfg.PayTRMerchantKey, s.cfg.PayTRMerchantSalt)
+	id, key, salt, err := s.payTRCredentials()
+	if err != nil {
+		return err
+	}
+	if id == "" || key == "" || salt == "" {
+		return errors.New("PayTR bilgileri eksik")
+	}
+	hashStr := merchantOID + salt + status + totalAmount
+	expectedHash := s.generateHash(hashStr, key, "")
 
-	if hash != expectedHash {
+	if !hmac.Equal([]byte(hash), []byte(expectedHash)) {
 		return errors.New("geçersiz callback hash değeri")
 	}
 
@@ -328,9 +358,10 @@ func (s *PaymentService) GetInstallments(binNumber string, amount float64) ([]In
 	}
 	binNumber = binNumber[:6]
 
-	merchantID := s.cfg.PayTRMerchantID
-	merchantKey := s.cfg.PayTRMerchantKey
-	merchantSalt := s.cfg.PayTRMerchantSalt
+	merchantID, merchantKey, merchantSalt, err := s.payTRCredentials()
+	if err != nil {
+		return nil, err
+	}
 
 	paymentAmount := fmt.Sprintf("%.0f", amount*100)
 
@@ -413,10 +444,14 @@ func (s *PaymentService) RefundPayment(orderID uint64, amount float64, reference
 		return nil, errors.New("sipariş bulunamadı")
 	}
 
-	merchantID := s.cfg.PayTRMerchantID
-	merchantKey := s.cfg.PayTRMerchantKey
-	merchantSalt := s.cfg.PayTRMerchantSalt
+	merchantID, merchantKey, merchantSalt, err := s.payTRCredentials()
+	if err != nil {
+		return nil, err
+	}
 
+	if s.cfg.AppEnv == "production" && (merchantID == "" || merchantKey == "" || merchantSalt == "") {
+		return nil, errors.New("PayTR bilgileri eksik")
+	}
 	// Dev mode — PayTR creds yoksa veya order DEV-payment_id ile geldiyse fake refund.
 	if strings.TrimSpace(merchantID) == "" || strings.HasPrefix(order.PaymentID, "DEV-") {
 		fakeID := fmt.Sprintf("DEV-REFUND-%d-%d", orderID, time.Now().Unix())
@@ -431,8 +466,8 @@ func (s *PaymentService) RefundPayment(orderID uint64, amount float64, reference
 	merchantOID := order.OrderNumber
 	returnAmount := fmt.Sprintf("%.2f", amount)
 
-	// Hash: merchant_id + merchant_oid + return_amount + reference_no + merchant_salt
-	hashStr := merchantID + merchantOID + returnAmount + referenceNo
+	// Hash: merchant_id + merchant_oid + return_amount + merchant_salt
+	hashStr := merchantID + merchantOID + returnAmount
 	token := s.generateHash(hashStr, merchantKey, merchantSalt)
 
 	resp, err := s.client.R().
@@ -470,7 +505,7 @@ func (s *PaymentService) RefundPayment(orderID uint64, amount float64, reference
 
 // generateHash PayTR HMAC-SHA256 hash olusturur.
 func (s *PaymentService) generateHash(data, key, salt string) string {
-	mac := hmac.New(sha256.New, []byte(key+salt))
-	mac.Write([]byte(data))
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write([]byte(data + salt))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
