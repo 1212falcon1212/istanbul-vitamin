@@ -219,14 +219,20 @@ func (s *SettingService) ContactSettings() (aras.ContactSettings, error) {
 	if err != nil {
 		return aras.ContactSettings{}, err
 	}
+	sender := func(key, fallback string) string {
+		if v := strings.TrimSpace(all["aras.sender_"+key]); v != "" {
+			return v
+		}
+		return strings.TrimSpace(all[fallback])
+	}
 	return aras.ContactSettings{
-		SenderName: strings.TrimSpace(all["sender_name"]),
+		SenderName: sender("name", "sender_name"),
 		SiteName:   strings.TrimSpace(all["site_name"]),
-		Phone:      strings.TrimSpace(all["phone"]),
-		Email:      strings.TrimSpace(all["email"]),
-		Address:    strings.TrimSpace(all["address"]),
-		City:       strings.TrimSpace(all["city"]),
-		Town:       strings.TrimSpace(all["town"]),
+		Phone:      sender("phone", "phone"),
+		Email:      sender("email", "email"),
+		Address:    sender("address", "address"),
+		City:       sender("city", "city"),
+		Town:       sender("town", "town"),
 	}, nil
 }
 

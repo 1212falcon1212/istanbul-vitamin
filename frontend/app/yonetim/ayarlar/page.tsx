@@ -155,6 +155,12 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
       },
       { key: "aras.parcel_kg_limit", label: "Parça Başı Maks. Kg", type: "number", hint: "Toplam ağırlığa göre parça sayısı bu limite göre hesaplanır" },
       { key: "aras.sender_address_id", label: "Sevk Adresi ID", type: "text", hint: "Aras tarafından verilen aktif sevk adresi ID'si; adres kaydıyla da doldurulabilir." },
+      { key: "aras.sender_name", label: "Çıkış deposu adı", type: "text" },
+      { key: "aras.sender_address", label: "Çıkış deposu adresi", type: "text" },
+      { key: "aras.sender_city", label: "Çıkış ili", type: "text" },
+      { key: "aras.sender_town", label: "Çıkış ilçesi", type: "text" },
+      { key: "aras.sender_phone", label: "Çıkış deposu telefonu", type: "text" },
+      { key: "aras.sender_email", label: "Çıkış deposu e-postası", type: "email" },
     ],
     actions: [
       {
@@ -172,7 +178,7 @@ const tabs: { id: string; label: string; fields: SettingField[]; actions?: Setti
         successMessage: "Sorgu gönderildi",
       },
       {
-        confirm: "Seçili Aras ortamında İletişim sekmesindeki depo bilgileriyle adres kaydı oluşturulsun mu?",
+        confirm: "Seçili Aras ortamında gönderici depo bilgileriyle adres kaydı oluşturulsun mu?",
         label: "Gönderici Adresimi Aras'a Kaydet",
         endpoint: "/admin/aras/sender-address/register",
         method: "POST",
@@ -295,7 +301,7 @@ export default function SettingsPage() {
 
       {!loading && currentTab && (
         <div className="bg-card-bg rounded-xl border border-border p-6 max-w-2xl">
-          {activeTab === "aras_kargo" && <p className="mb-5 text-sm text-text-secondary">Aras’ın seçili ortam için verdiği web servis bilgilerini girip kaydedin. Gönderici testi sevk adresini doğrular. Depo adı, adresi ve telefonu İletişim sekmesindedir.</p>}
+          {activeTab === "aras_kargo" && <p className="mb-5 text-sm text-text-secondary">Aras’ın seçili ortam için verdiği web servis bilgilerini girip kaydedin. Gönderici testi sevk adresini doğrular. Boş bırakılan çıkış deposu alanlarında genel iletişim bilgileri kullanılır.</p>}
           <div className="space-y-4">
             {currentTab.fields.map((field) => (
               <div key={field.key}>

@@ -20,6 +20,10 @@ func normalizedField(s string) string {
 // Decode SOAP namespaces, CDATA and escaped XML result strings before reading columns.
 // Keep the first value: a shipment can have multiple rows/pieces.
 func responseFields(body string) (map[string]string, error) {
+	return parseResponseFields(body, false)
+}
+
+func parseResponseFields(body string, addressLookup bool) (map[string]string, error) {
 	fields := map[string]string{}
 	var parse func(string, int) error
 	parse = func(input string, depth int) error {
@@ -71,7 +75,7 @@ func responseFields(body string) (map[string]string, error) {
 	if msg := field(fields, "faultstring", "Error", "ErrorMessage", "HATA"); msg != "" {
 		return nil, fmt.Errorf("aras servis hatası: %s", msg)
 	}
-	if code := field(fields, "ResultCode"); code != "" && code != "0" && code != "1" {
+	if code := field(fields, "ResultCode"); code != "" && code != "0" && code != "1" && !(addressLookup && code == "200") {
 		return nil, fmt.Errorf("aras servis hatası: code=%s msg=%s", code, field(fields, "ResultMessage", "Message"))
 	}
 	return fields, nil

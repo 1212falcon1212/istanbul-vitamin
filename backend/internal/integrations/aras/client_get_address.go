@@ -3,6 +3,7 @@ package aras
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -19,12 +20,18 @@ func (c *Client) CheckSenderAddress(ctx context.Context) (SOAPCall, error) {
 	if call.Err != nil {
 		return call, call.Err
 	}
-	fields, err := responseFields(call.Response)
+	fields, err := parseResponseFields(call.Response, true)
 	if err != nil {
 		return call, err
 	}
 	if field(fields, "ResultCode") == "" || !strings.EqualFold(field(fields, "AccountAddressId"), strings.TrimSpace(c.cfg.SenderAddressID)) {
 		return call, fmt.Errorf("Aras gönderici adresi doğrulanamadı")
+	}
+	if field(fields, "ResultCode") == "200" {
+		unit, _ := strconv.Atoi(field(fields, "SourceUnitId"))
+		if unit <= 0 {
+			return call, fmt.Errorf("Aras çıkış şubesi tanımlı değil")
+		}
 	}
 	return call, nil
 }

@@ -137,3 +137,22 @@ func TestReadOnlyConnectionAndRedaction(t *testing.T) {
 		}
 	}
 }
+
+func TestLiveAddressLookupRequiresMatchingDispatchBranch(t *testing.T) {
+	cfg := testConfig()
+	cfg.SenderAddressID = "selected"
+	for _, tc := range []struct {
+		id, unit, code string
+		ok             bool
+	}{
+		{"selected", "490", "200", true}, {"selected", "0", "200", false}, {"other", "490", "200", false}, {"selected", "490", "405", false},
+	} {
+		c := stubClient(cfg, func(_ *http.Request, _ string) string {
+			return "<GetAddressByIdResult><ResultCode>" + tc.code + "</ResultCode><AccountAddressId>" + tc.id + "</AccountAddressId><SourceUnitId>" + tc.unit + "</SourceUnitId></GetAddressByIdResult>"
+		})
+		_, err := c.CheckSenderAddress(context.Background())
+		if (err == nil) != tc.ok {
+			t.Fatalf("code %s unit %s: %v", tc.code, tc.unit, err)
+		}
+	}
+}
