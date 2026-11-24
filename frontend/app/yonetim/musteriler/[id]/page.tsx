@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { addressLine } from "@/lib/address-line";
 import AdminShell from "@/components/admin/AdminShell";
 import { api } from "@/lib/api";
 import { formatDate, formatPrice, formatPhone, getOrderStatusLabel, getOrderStatusColor } from "@/lib/utils";
@@ -144,7 +145,7 @@ export default function CustomerDetailPage() {
                     </p>
                     <p className="text-text-secondary">{addr.phone}</p>
                     <p className="text-text-secondary">
-                      {addr.address_line}, {addr.district}, {addr.city}
+                      {addressLine(addr)}, {addr.district}, {addr.city}
                     </p>
                   </div>
                 ))}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
-import { TR_CITIES, TR_DISTRICTS } from "@/lib/tr-locations";
+import AddressLocationFields from "./AddressLocationFields";
 
 interface AddressFormData {
   title: string;
@@ -11,6 +11,7 @@ interface AddressFormData {
   phone: string;
   city: string;
   district: string;
+  street: string;
   neighborhood: string;
   address_line: string;
   postal_code: string;
@@ -43,17 +44,13 @@ export default function AddressForm({
     phone: defaultValues?.phone || "",
     city: defaultValues?.city || "",
     district: defaultValues?.district || "",
+    street: defaultValues?.street || "",
     neighborhood: defaultValues?.neighborhood || "",
     address_line: defaultValues?.address_line || "",
     postal_code: defaultValues?.postal_code || "",
   });
   const [errors, setErrors] = useState<Partial<Record<keyof AddressFormData, string>>>({});
   const [saveInfo, setSaveInfo] = useState(true);
-
-  const districtOptions = useMemo(() => {
-    if (!form.city) return [] as string[];
-    return TR_DISTRICTS[form.city] ?? [];
-  }, [form.city]);
 
   function validate(): boolean {
     const e: Partial<Record<keyof AddressFormData, string>> = {};
@@ -62,7 +59,7 @@ export default function AddressForm({
     if (!form.phone.trim()) e.phone = "Telefon zorunlu";
     if (!form.city) e.city = "Şehir seçin";
     if (!form.district) e.district = "İlçe seçin";
-    if (!form.address_line.trim()) e.address_line = "Adres zorunlu";
+    if (!form.street.trim()) e.street = "Cadde veya sokak seçin";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -92,41 +89,7 @@ export default function AddressForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {/* Şehir */}
-      <FloatingSelect
-        label="Şehir"
-        value={form.city}
-        onChange={(v) => handleChange("city", v)}
-        options={TR_CITIES}
-        error={errors.city}
-        placeholder="Seçiniz"
-      />
-
-      {/* İlçe */}
-      <FloatingSelect
-        label="İlçe"
-        value={form.district}
-        onChange={(v) => handleChange("district", v)}
-        options={districtOptions}
-        error={errors.district}
-        placeholder={form.city ? "Seçiniz" : "Önce şehir seçin"}
-        disabled={!form.city}
-      />
-
-      {/* Mahalle */}
-      <FloatingInput
-        label="Mahalle"
-        value={form.neighborhood}
-        onChange={(v) => handleChange("neighborhood", v)}
-      />
-
-      {/* Ülke/Bölge */}
-      <FloatingInput
-        label="Ülke/Bölge"
-        value="Türkiye"
-        readOnly
-        onChange={() => {}}
-      />
+      <AddressLocationFields value={form} onChange={location => setForm(p => ({...p,...location}))} />
 
       {/* Ad / Soyad */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -146,7 +109,8 @@ export default function AddressForm({
 
       {/* Adres */}
       <FloatingInput
-        label="Adres"
+        label="Adres detayı (isteğe bağlı)"
+        placeholder="Bina no, daire no, kat veya adres tarifi"
         value={form.address_line}
         onChange={(v) => handleChange("address_line", v)}
         error={errors.address_line}
@@ -159,12 +123,7 @@ export default function AddressForm({
           value={form.postal_code}
           onChange={(v) => handleChange("postal_code", v)}
         />
-        <FloatingInput
-          label="Şehir"
-          value={form.city}
-          onChange={(v) => handleChange("city", v)}
-          readOnly
-        />
+
       </div>
 
       {/* Telefon */}
@@ -292,68 +251,6 @@ function FloatingInput({
         {trailing && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">{trailing}</div>
         )}
-      </div>
-      {error && <p className="mt-1 text-xs text-accent-rose px-1">{error}</p>}
-    </div>
-  );
-}
-
-function FloatingSelect({
-  label,
-  value,
-  onChange,
-  options,
-  error,
-  placeholder,
-  disabled,
-}: FloatingBaseProps & {
-  onChange: (v: string) => void;
-  options: string[];
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <div
-        className={cn(
-          "relative h-14 rounded-xl border transition",
-          disabled
-            ? "bg-bg-primary/40 border-border"
-            : "bg-white",
-          error
-            ? "border-accent-rose"
-            : "border-border focus-within:border-text-primary"
-        )}
-      >
-        <label className="absolute left-4 top-2 text-[11px] uppercase tracking-wide text-text-secondary pointer-events-none">
-          {label}
-        </label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={cn(
-            "absolute inset-0 appearance-none bg-transparent pl-4 pr-10 pt-6 pb-2 rounded-xl text-sm text-text-primary focus:outline-none",
-            disabled ? "cursor-not-allowed text-text-secondary" : "cursor-pointer"
-          )}
-        >
-          <option value="" disabled>
-            {placeholder ?? "Seçiniz"}
-          </option>
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none"
-          fill="none"
-        >
-          <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
       </div>
       {error && <p className="mt-1 text-xs text-accent-rose px-1">{error}</p>}
     </div>

@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import { api } from "@/lib/api";
 import type { Address } from "@/types";
 import AddressForm from "@/components/checkout/AddressForm";
+import { addressLine } from "@/lib/address-line";
 import PaymentForm from "@/components/checkout/PaymentForm";
 import Spinner from "@/components/ui/Spinner";
 import { cn, formatPrice, resolveImageUrl } from "@/lib/utils";
@@ -27,6 +28,7 @@ interface ShippingData {
   phone: string;
   city: string;
   district: string;
+  street: string;
   neighborhood: string;
   address_line: string;
   postal_code: string;
@@ -127,6 +129,7 @@ export default function OdemePage() {
             phone: def.phone,
             city: def.city,
             district: def.district,
+            street: def.street || "",
             neighborhood: def.neighborhood || "",
             address_line: def.address_line,
             postal_code: def.postal_code || "",
@@ -152,6 +155,7 @@ export default function OdemePage() {
       phone: addr.phone,
       city: addr.city,
       district: addr.district,
+      street: addr.street || "",
       neighborhood: addr.neighborhood || "",
       address_line: addr.address_line,
       postal_code: addr.postal_code || "",
@@ -222,8 +226,8 @@ export default function OdemePage() {
       const billing = billingSameAsShipping
         ? shippingData
         : billingData ?? shippingData;
-      const billingAddressLine = `${billing.neighborhood} ${billing.address_line}`.trim();
-      const shippingAddressLine = `${shippingData.neighborhood} ${shippingData.address_line}`.trim();
+      const billingAddressLine = addressLine(billing);
+      const shippingAddressLine = addressLine(shippingData);
 
       const orderRes = await api.post<OrderPayload | { order: OrderPayload }>(
         "/orders",
@@ -447,7 +451,7 @@ export default function OdemePage() {
                             {addr.first_name} {addr.last_name} — {addr.phone}
                           </p>
                           <p className="text-sm text-text-secondary">
-                            {addr.address_line}, {addr.district}/{addr.city}
+                            {addressLine(addr)}, {addr.district}/{addr.city}
                           </p>
                         </div>
                       </label>
@@ -512,7 +516,7 @@ export default function OdemePage() {
                                   {addr.first_name} {addr.last_name} — {addr.phone}
                                 </p>
                                 <p className="text-sm text-text-secondary">
-                                  {addr.address_line}, {addr.district}/{addr.city}
+                                  {addressLine(addr)}, {addr.district}/{addr.city}
                                 </p>
                               </div>
                             </label>
@@ -548,6 +552,7 @@ export default function OdemePage() {
                                   phone: billing.phone,
                                   city: billing.city,
                                   district: billing.district,
+                                  street: billing.street,
                                   neighborhood: billing.neighborhood,
                                   address_line: billing.address_line,
                                   postal_code: billing.postal_code,
@@ -647,6 +652,7 @@ export default function OdemePage() {
                               phone: shipping.phone,
                               city: shipping.city,
                               district: shipping.district,
+                              street: shipping.street,
                               neighborhood: shipping.neighborhood,
                               address_line: shipping.address_line,
                               postal_code: shipping.postal_code,
@@ -696,7 +702,7 @@ export default function OdemePage() {
                     </span>
                     <div className="flex-1 text-text-primary">
                       {shippingData.first_name} {shippingData.last_name},{" "}
-                      {shippingData.address_line}, {shippingData.district}/
+                      {addressLine(shippingData)}, {shippingData.district}/
                       {shippingData.city}
                     </div>
                     <button

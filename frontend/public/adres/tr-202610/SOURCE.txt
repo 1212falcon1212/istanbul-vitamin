@@ -1,0 +1,3 @@
+Türkiye adres listeleri — Ekim 2026
+Kaynak: https://github.com/onurusluca/turkey-geo-api/tree/e44ca84316a8b3d6ff3d9b898b806b1c3d853449/data/jsonl
+Kaynak paketin referansı: https://github.com/melihozkara/il-ilce-mahalle-sokak-veritabani (06.10.2026).

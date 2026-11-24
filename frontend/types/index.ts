@@ -289,6 +289,7 @@ export interface Address {
   city: string;
   district: string;
   neighborhood?: string;
+  street?: string;
   address_line: string;
   postal_code?: string;
   is_default: boolean;

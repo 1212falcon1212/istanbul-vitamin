@@ -11,6 +11,7 @@ type Address struct {
 	Phone        string    `gorm:"type:varchar(20);not null" json:"phone"`
 	City         string    `gorm:"type:varchar(100);not null" json:"city"`
 	District     string    `gorm:"type:varchar(100);not null" json:"district"`
+	Street       string    `gorm:"type:varchar(255)" json:"street"`
 	Neighborhood string    `gorm:"type:varchar(150)" json:"neighborhood"`
 	AddressLine  string    `gorm:"type:text;not null" json:"address_line"`
 	PostalCode   string    `gorm:"type:varchar(10)" json:"postal_code"`

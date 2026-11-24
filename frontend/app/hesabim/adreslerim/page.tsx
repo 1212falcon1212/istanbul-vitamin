@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
 import type { Address } from "@/types";
-import { TR_CITIES, TR_DISTRICTS } from "@/lib/tr-locations";
+import AddressLocationFields from "@/components/checkout/AddressLocationFields";
+import { addressLine } from "@/lib/address-line";
 
 interface AddressFormData {
   title: string;
@@ -14,6 +15,7 @@ interface AddressFormData {
   phone: string;
   city: string;
   district: string;
+  street: string;
   neighborhood: string;
   address_line: string;
   postal_code: string;
@@ -28,6 +30,7 @@ const EMPTY_FORM: AddressFormData = {
   city: "",
   district: "",
   neighborhood: "",
+  street: "",
   address_line: "",
   postal_code: "",
   is_default: false,
@@ -76,6 +79,7 @@ export default function AdreslerimPage() {
       phone: address.phone,
       city: address.city,
       district: address.district,
+      street: address.street || "",
       neighborhood: address.neighborhood || "",
       address_line: address.address_line,
       postal_code: address.postal_code || "",
@@ -98,7 +102,7 @@ export default function AdreslerimPage() {
     setSaving(true);
     setFormError(null);
 
-    if (!formData.title || !formData.first_name || !formData.last_name || !formData.phone || !formData.city || !formData.district || !formData.address_line) {
+    if (!formData.title || !formData.first_name || !formData.last_name || !formData.phone || !formData.city || !formData.district || (!formData.street.trim() && !formData.address_line.trim())) {
       setFormError("Lutfen zorunlu alanlari doldurunuz.");
       setSaving(false);
       return;
@@ -142,11 +146,6 @@ export default function AdreslerimPage() {
       return next;
     });
   }
-
-  const districtOptions = useMemo(() => {
-    if (!formData.city) return [] as string[];
-    return TR_DISTRICTS[formData.city] ?? [];
-  }, [formData.city]);
 
   if (loading) {
     return (
@@ -250,70 +249,17 @@ export default function AdreslerimPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    İl *
-                  </label>
-                  <select
-                    value={formData.city}
-                    onChange={(e) => handleChange("city", e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
-                  >
-                    <option value="" disabled>
-                      Seçiniz
-                    </option>
-                    {TR_CITIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">
-                    İlçe *
-                  </label>
-                  <select
-                    value={formData.district}
-                    onChange={(e) => handleChange("district", e.target.value)}
-                    disabled={!formData.city}
-                    className={cn(
-                      "w-full h-10 px-3 rounded-lg border border-border text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors",
-                      formData.city ? "bg-white" : "bg-bg-primary/40 cursor-not-allowed"
-                    )}
-                  >
-                    <option value="" disabled>
-                      {formData.city ? "Seçiniz" : "Önce il seçin"}
-                    </option>
-                    {districtOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <AddressLocationFields value={formData} onChange={location => setFormData(p => ({...p,...location}))}
+                legacyAddress={editingId ? addresses.find(a => a.id === editingId) : undefined} />
 
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
-                  Mahalle
-                </label>
-                <input
-                  type="text"
-                  value={formData.neighborhood}
-                  onChange={(e) => handleChange("neighborhood", e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">
-                  Adres *
+                  Adres detayı (isteğe bağlı)
                 </label>
                 <textarea
                   value={formData.address_line}
                   onChange={(e) => handleChange("address_line", e.target.value)}
+                  placeholder="Bina no, daire no, kat veya adres tarifi"
                   rows={3}
                   className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors resize-none"
                 />
@@ -404,8 +350,7 @@ export default function AdreslerimPage() {
                 <p className="font-medium text-text-primary">
                   {address.first_name} {address.last_name}
                 </p>
-                <p>{address.address_line}</p>
-                {address.neighborhood && <p>{address.neighborhood}</p>}
+                <p>{addressLine(address)}</p>
                 <p>
                   {address.district}, {address.city}
                   {address.postal_code && ` - ${address.postal_code}`}

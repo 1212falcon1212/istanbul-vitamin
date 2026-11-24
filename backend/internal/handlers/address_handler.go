@@ -28,6 +28,7 @@ type addressRequest struct {
 	Phone        string `json:"phone"`
 	City         string `json:"city"`
 	District     string `json:"district"`
+	Street       string `json:"street"`
 	Neighborhood string `json:"neighborhood"`
 	AddressLine  string `json:"address_line"`
 	PostalCode   string `json:"postal_code"`
@@ -69,10 +70,11 @@ func (h *AddressHandler) Create(c *fiber.Ctx) error {
 	req.Phone = strings.TrimSpace(req.Phone)
 	req.City = strings.TrimSpace(req.City)
 	req.District = strings.TrimSpace(req.District)
+	req.Street = strings.TrimSpace(req.Street)
 	req.AddressLine = strings.TrimSpace(req.AddressLine)
 
 	if req.Title == "" || req.FirstName == "" || req.LastName == "" ||
-		req.Phone == "" || req.City == "" || req.District == "" || req.AddressLine == "" {
+		req.Phone == "" || req.City == "" || req.District == "" || (req.AddressLine == "" && req.Street == "") {
 		return utils.BadRequest(c, "Başlık, ad, soyad, telefon, şehir, ilçe ve adres alanları zorunludur")
 	}
 
@@ -84,6 +86,7 @@ func (h *AddressHandler) Create(c *fiber.Ctx) error {
 		Phone:        req.Phone,
 		City:         req.City,
 		District:     req.District,
+		Street:       req.Street,
 		Neighborhood: strings.TrimSpace(req.Neighborhood),
 		AddressLine:  req.AddressLine,
 		PostalCode:   strings.TrimSpace(req.PostalCode),
@@ -122,10 +125,11 @@ func (h *AddressHandler) Update(c *fiber.Ctx) error {
 	req.Phone = strings.TrimSpace(req.Phone)
 	req.City = strings.TrimSpace(req.City)
 	req.District = strings.TrimSpace(req.District)
+	req.Street = strings.TrimSpace(req.Street)
 	req.AddressLine = strings.TrimSpace(req.AddressLine)
 
 	if req.Title == "" || req.FirstName == "" || req.LastName == "" ||
-		req.Phone == "" || req.City == "" || req.District == "" || req.AddressLine == "" {
+		req.Phone == "" || req.City == "" || req.District == "" || (req.AddressLine == "" && req.Street == "") {
 		return utils.BadRequest(c, "Başlık, ad, soyad, telefon, şehir, ilçe ve adres alanları zorunludur")
 	}
 
@@ -138,6 +142,7 @@ func (h *AddressHandler) Update(c *fiber.Ctx) error {
 		Phone:        req.Phone,
 		City:         req.City,
 		District:     req.District,
+		Street:       req.Street,
 		Neighborhood: strings.TrimSpace(req.Neighborhood),
 		AddressLine:  req.AddressLine,
 		PostalCode:   strings.TrimSpace(req.PostalCode),

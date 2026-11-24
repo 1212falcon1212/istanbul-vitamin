@@ -57,7 +57,7 @@ func (s *AddressService) Update(address *models.Address) error {
 				return errors.New("varsayılan adres güncellenirken bir hata oluştu")
 			}
 		}
-		if err := owned.Select("Title", "FirstName", "LastName", "Phone", "City", "District", "Neighborhood", "AddressLine", "PostalCode", "IsDefault", "UpdatedAt").Updates(address).Error; err != nil {
+		if err := owned.Select("Title", "FirstName", "LastName", "Phone", "City", "District", "Neighborhood", "Street", "AddressLine", "PostalCode", "IsDefault", "UpdatedAt").Updates(address).Error; err != nil {
 			return errors.New("adres güncellenirken bir hata oluştu")
 		}
 		address.CreatedAt = existing.CreatedAt
