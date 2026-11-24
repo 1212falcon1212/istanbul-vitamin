@@ -112,8 +112,8 @@ export default function AdreslerimPage() {
       }
       closeForm();
       await fetchAddresses();
-    } catch {
-      setFormError("Adres kaydedilirken bir hata olustu.");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Adres kaydedilemedi.");
     } finally {
       setSaving(false);
     }

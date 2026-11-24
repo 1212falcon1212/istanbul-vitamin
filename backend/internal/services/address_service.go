@@ -43,28 +43,26 @@ func (s *AddressService) Create(address *models.Address) error {
 
 // Update mevcut adresi gunceller. Kullaniciya ait oldugundan emin olur.
 func (s *AddressService) Update(address *models.Address) error {
-	// Sahiplik kontrolu
-	var existing models.Address
-	if err := s.db.Where("id = ? AND user_id = ?", address.ID, address.UserID).First(&existing).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("adres bulunamadı")
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		owned := tx.Model(&models.Address{}).Where("id = ? AND user_id = ?", address.ID, address.UserID)
+		var existing models.Address
+		if err := tx.Where("id = ? AND user_id = ?", address.ID, address.UserID).First(&existing).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("adres bulunamadı")
+			}
+			return errors.New("adres getirilirken bir hata oluştu")
 		}
-		return errors.New("adres getirilirken bir hata oluştu")
-	}
-
-	if address.IsDefault {
-		if err := s.db.Model(&models.Address{}).
-			Where("user_id = ? AND id != ? AND is_default = ?", address.UserID, address.ID, true).
-			Update("is_default", false).Error; err != nil {
-			return errors.New("varsayılan adres güncellenirken bir hata oluştu")
+		if address.IsDefault {
+			if err := tx.Model(&models.Address{}).Where("user_id = ? AND id != ? AND is_default = ?", address.UserID, address.ID, true).Update("is_default", false).Error; err != nil {
+				return errors.New("varsayılan adres güncellenirken bir hata oluştu")
+			}
 		}
-	}
-
-	if err := s.db.Save(address).Error; err != nil {
-		return errors.New("adres güncellenirken bir hata oluştu")
-	}
-
-	return nil
+		if err := owned.Select("Title", "FirstName", "LastName", "Phone", "City", "District", "Neighborhood", "AddressLine", "PostalCode", "IsDefault", "UpdatedAt").Updates(address).Error; err != nil {
+			return errors.New("adres güncellenirken bir hata oluştu")
+		}
+		address.CreatedAt = existing.CreatedAt
+		return nil
+	})
 }
 
 // Delete adresi siler. Kullaniciya ait oldugundan emin olur.
