@@ -8,6 +8,7 @@ import (
 	"github.com/istanbulvitamin/backend/internal/models"
 	"github.com/istanbulvitamin/backend/internal/utils"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type OrderService struct {
@@ -453,11 +454,11 @@ func (s *OrderService) ApplyArasShipment(orderID uint64, integrationCode, tracki
 		"aras_integration_code": integrationCode,
 		"cargo_company":         cargoCompany,
 	}
-	if trackingNo != "" {
-		updates["tracking_number"] = trackingNo
-	}
 	if parcelCount > 0 {
 		updates["aras_parcel_count"] = parcelCount
+	}
+	if trackingNo != "" {
+		return s.recordArasTracking(orderID, integrationCode, trackingNo, updates)
 	}
 	if err := s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error; err != nil {
 		return errors.New("aras kargo bilgileri kaydedilemedi")
@@ -477,6 +478,46 @@ func (s *OrderService) ApplyArasShipment(orderID uint64, integrationCode, tracki
 		}
 	}
 	return nil
+}
+
+// Serialize the first tracking number with its notification so a retry or
+// simultaneous manual refresh cannot enqueue a second customer message.
+func (s *OrderService) recordArasTracking(id uint64, integrationCode, tracking string, updates map[string]interface{}) error {
+	var triggerInvoice bool
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var order models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, id).Error; err != nil {
+			return err
+		}
+		if order.Status != "pending" && order.Status != "shipped" {
+			return nil
+		}
+		if order.ArasCancelSucceeded != nil && *order.ArasCancelSucceeded {
+			return nil
+		}
+		if order.ArasIntegrationCode != "" && order.ArasIntegrationCode != integrationCode {
+			return errors.New("Aras entegrasyon kodu değişmiş")
+		}
+		if order.TrackingNumber == tracking {
+			return nil
+		}
+		if order.TrackingNumber != "" {
+			return errors.New("Aras takip numarası kayıtla uyuşmuyor")
+		}
+		updates["tracking_number"] = tracking
+		if err := tx.Model(&order).Updates(updates).Error; err != nil {
+			return err
+		}
+		if order.Status == "pending" {
+			triggerInvoice = order.BizimHesapInvoiceID == ""
+			return NewOrderService(tx).UpdateStatus(id, "shipped", fmt.Sprintf("Aras Kargo takip numarası oluştu: %s", tracking), "system:aras")
+		}
+		return models.QueueNotification(tx, fmt.Sprintf("order:%d:tracking_available", id), "tracking_available", id, 0)
+	})
+	if err == nil && triggerInvoice && s.invoiceTrigger != nil {
+		go s.invoiceTrigger(id)
+	}
+	return err
 }
 
 // ApplyArasStatus Aras tracking sorgusunun döndürdüğü 1..7 durum kodunu siparişe yazar.

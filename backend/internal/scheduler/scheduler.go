@@ -58,6 +58,7 @@ func Start(bizimhesapCfg bizimhesap.ConfigProvider, arasSvc *aras.Service) (gocr
 					log.Printf("[aras] %d kargo güncellendi", updated)
 				}
 			}),
+			gocron.WithStartAt(gocron.WithStartImmediately()),
 		)
 		if err != nil {
 			return nil, err

@@ -244,10 +244,23 @@ func (s *Service) RefreshStatus(ctx context.Context, orderID uint64) error {
 	if err != nil {
 		return err
 	}
-	if res.DurumKodu == 0 {
-		return errors.New("aras yanıtında durum kodu okunamadı")
+	return s.applyTracking(order, res)
+}
+
+func (s *Service) applyTracking(order models.Order, res QueryResult) error {
+	if res.TrackingNumber != "" && res.TrackingNumber != order.TrackingNumber {
+		count := 1
+		if order.ArasParcelCount != nil {
+			count = *order.ArasParcelCount
+		}
+		if err := s.shipper.ApplyArasShipment(order.ID, order.ArasIntegrationCode, res.TrackingNumber, "Aras Kargo", count); err != nil {
+			return err
+		}
 	}
-	return s.shipper.ApplyArasStatus(orderID, res.DurumKodu, res.DurumText)
+	if res.DurumKodu == 0 {
+		return nil
+	}
+	return s.shipper.ApplyArasStatus(order.ID, res.DurumKodu, res.DurumText)
 }
 
 // CancelShipment Aras'taki gönderiyi iptal etmeyi dener.
@@ -296,7 +309,8 @@ func (s *Service) PollStatuses(ctx context.Context) (int, error) {
 	q := s.db.
 		Where("status = ?", "shipped").
 		Where("aras_integration_code <> ''").
-		Where("aras_status_code IS NULL OR aras_status_code < 6").
+		Where("aras_status_code IS NULL OR aras_status_code <> 6").
+		Where("aras_cancel_succeeded IS NULL OR aras_cancel_succeeded = ?", false).
 		Order("aras_status_checked_at IS NULL DESC, aras_status_checked_at ASC").
 		Limit(50)
 	if err := q.Find(&orders).Error; err != nil {
@@ -310,16 +324,16 @@ func (s *Service) PollStatuses(ctx context.Context) (int, error) {
 		default:
 		}
 		o := &orders[i]
+		if err := s.db.Model(o).Update("aras_status_checked_at", time.Now()).Error; err != nil {
+			return updated, err
+		}
 		res, call, err := c.QueryTracking(ctx, o.ArasIntegrationCode)
 		s.log(o.ID, "query", call)
 		if err != nil {
 			log.Printf("[aras] poll: order=%d err=%v", o.ID, err)
 			continue
 		}
-		if res.DurumKodu == 0 {
-			continue
-		}
-		if err := s.shipper.ApplyArasStatus(o.ID, res.DurumKodu, res.DurumText); err != nil {
+		if err := s.applyTracking(*o, res); err != nil {
 			log.Printf("[aras] poll: status update başarısız order=%d err=%v", o.ID, err)
 			continue
 		}
@@ -362,11 +376,6 @@ func (s *Service) BarcodesFor(orderID uint64) (*LabelData, error) {
 		integ = order.OrderNumber
 	}
 	parcels := BarcodesFromIntegrationCode(integ, parcelCount)
-	// Eğer hiç tracking yok ama parça varsa Aras henüz vermedi; integration code üzerinden basıyoruz.
-	// Tek parça ve tracking varsa parça-1 = tracking.
-	if parcelCount == 1 && order.TrackingNumber != "" {
-		parcels[0].BarcodeNumber = order.TrackingNumber
-	}
 	senderName := strings.TrimSpace(contact.SenderName)
 	if senderName == "" {
 		senderName = strings.TrimSpace(contact.SiteName)

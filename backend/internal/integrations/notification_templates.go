@@ -23,6 +23,8 @@ func EventCopy(kind string) (string, string) {
 		return "Siparişiniz alındı", "Siparişinizi aldık. Ödeme durumunu ve siparişinizin güncel aşamasını hesabınızdan takip edebilirsiniz."
 	case "payment_confirmed":
 		return "Ödemeniz onaylandı", "Siparişinizin ödeme onayı alındı. Hazırlık ve kargo aşamalarında sizi bilgilendireceğiz."
+	case "tracking_available":
+		return "Kargo takip numaranız hazır", "Kargonuzun takip numarasını sipariş detayında görebilirsiniz."
 	case "shipped":
 		return "Siparişiniz kargoya verildi", "Kargo bilgilerinizi ve güncel sipariş durumunu hesabınızdan takip edebilirsiniz."
 	case "delivered":
@@ -58,7 +60,7 @@ func OrderEventEmail(kind string, d OrderMail) (string, string) {
 		return "", ""
 	}
 	content := fmt.Sprintf(`<p style="margin:0 0 12px;font-size:11px;font-weight:bold;letter-spacing:1.5px;color:#7c3aed">SİPARİŞ BİLGİLENDİRMESİ</p><h1 class="heading" style="font-size:30px;line-height:38px;letter-spacing:-0.6px;color:#32164b;margin:0 0 24px;font-weight:700">%s</h1><p style="margin:0 0 12px;color:#32164b">Merhaba %s,</p><p style="margin:0 0 26px">%s</p><table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f6f2fc;border:1px solid #eae0f6;border-radius:10px"><tr><td class="summary-cell" width="55%%" valign="top" style="padding:20px 22px"><span style="font-size:11px;letter-spacing:0.8px;color:#8a729f">SİPARİŞ NUMARASI</span><br><strong style="font-size:16px;color:#3c2154">%s</strong></td><td class="summary-cell" valign="top" style="padding:20px 22px"><span style="font-size:11px;letter-spacing:0.8px;color:#8a729f">SİPARİŞ TUTARI</span><br><strong style="font-size:19px;color:#5b21b6">%s TL</strong></td></tr></table>`, html.EscapeString(title), html.EscapeString(d.Name), html.EscapeString(body), html.EscapeString(d.Number), formatTRY(d.Total))
-	if kind == "shipped" && d.Tracking != "" {
+	if (kind == "shipped" || kind == "tracking_available") && d.Tracking != "" {
 		content += fmt.Sprintf(`<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="margin-top:16px;border:1px solid #eee9f3;border-radius:10px"><tr><td style="padding:18px 22px"><span style="font-size:11px;letter-spacing:0.8px;color:#8a729f">KARGO BİLGİLERİ</span><p style="margin:6px 0 0;color:#32164b;font-weight:bold">%s</p><p style="margin:3px 0 0;font-size:13px">Takip numarası: <strong>%s</strong></p></td></tr></table>`, html.EscapeString(d.Company), html.EscapeString(d.Tracking))
 	}
 	content += orderDetails(d)
