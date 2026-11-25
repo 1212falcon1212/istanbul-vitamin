@@ -97,7 +97,7 @@ export default function SearchPreview({
             </Link>
           </div>
         ) : (
-          <ul className="search-preview-results max-h-[460px] overflow-y-auto overscroll-contain grid grid-cols-1 md:grid-cols-2">
+          <ul className="search-preview-results max-h-[460px] overflow-y-auto overscroll-contain grid grid-cols-1">
             {results.map((product) => (
               <li key={product.id} className="min-w-0 p-2" onClick={(event) => {
                 if ((event.target as HTMLElement).closest("a")) onClose?.();

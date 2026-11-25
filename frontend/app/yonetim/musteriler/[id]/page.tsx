@@ -22,22 +22,14 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    const role = localStorage.getItem("auth_role");
-    if (!token || !["super_admin", "admin", "editor"].includes(role || "")) {
-      router.push("/yonetim/giris");
-    }
-  }, [router]);
-
-  useEffect(() => {
     async function load() {
       setLoading(true);
       setError("");
       try {
-        const res = await api.get<CustomerDetail>(
+        const res = await api.get<{ customer: CustomerDetail }>(
           `/admin/customers/${params.id}`
         );
-        if (res.data) setCustomer(res.data);
+        if (res.data) setCustomer(res.data.customer);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Musteri yuklenemedi");
       } finally {
@@ -95,7 +87,7 @@ export default function CustomerDetailPage() {
               <div>
                 <span className="text-text-secondary">Telefon:</span>
                 <span className="ml-2 text-text-primary">
-                  {formatPhone(customer.phone)}
+                  {customer.phone ? formatPhone(customer.phone) : "—"}
                 </span>
               </div>
               <div>

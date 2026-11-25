@@ -14,11 +14,23 @@ import CategoryMenu from "./CategoryMenu";
 // so the runtime never reaches out to the Iconify CDN.
 
 import type { Category } from "@/types";
+import dynamic from "next/dynamic";
 import SearchPreview from "./SearchPreview";
 
 // ---------------------------------------------------------------------------
 // Icons (inline SVG for zero-dependency, consistent stroke style)
 // ---------------------------------------------------------------------------
+
+const BarcodeScanner = dynamic(() => import("./BarcodeScanner"), { ssr: false });
+
+function ScanButton({ onClick }: { onClick: () => void }) {
+  return <button type="button" aria-label="Barkod okut" title="Barkod okut" onClick={onClick}
+    className="absolute right-11 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-md hover:bg-primary-soft">
+    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M3 8V4h4m10 0h4v4M3 16v4h4m10 0h4v-4M7 8v8m3-8v8m4-8v8m3-8v8"/>
+    </svg>
+  </button>;
+}
 
 function SearchIcon({ className }: { className?: string }) {
   return (
@@ -158,6 +170,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
   // --- State ---
   const [categories, setCategories] = useState<Category[]>([]);
   const [scrolled, setScrolled] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -221,11 +234,13 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
 
   // --- Search submit ---
   const handleSearch = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       const q = searchQuery.trim();
       if (q) {
         window.location.href = `/arama?q=${encodeURIComponent(q)}`;
+      } else {
+        e.currentTarget.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
       }
     },
     [searchQuery]
@@ -242,6 +257,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
 
   return (
     <header className="shop-header w-full z-50 relative">
+      {scannerOpen && <BarcodeScanner onClose={() => setScannerOpen(false)} />}
       {showTopHeader && settings.top_header_mode === "image" && settings.top_header_image ? <Link className="top-strip-banner" href={safeContentLink(settings.top_header_link || "/")}><picture>{settings.top_header_image_mobile && <source media="(max-width:767px)" srcSet={resolveImageUrl(settings.top_header_image_mobile)}/>}<img src={resolveImageUrl(settings.top_header_image)} alt={settings.top_header_image_alt || "Mağaza duyurusu"} fetchPriority="high"/></picture></Link> : showTopHeader && announcementText && <div className="theme-announcement" aria-label="Mağaza duyurusu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 6h11v11H3zM14 10h4l3 4v3h-7" strokeLinejoin="round"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>{announcementHref ? <Link href={safeContentLink(announcementHref)}>{announcementText}</Link> : announcementText}</div>}
       {home.header.utilitiesEnabled && <div className="theme-utilities theme-container"><div>{home.header.utilityLinks.map((link,i)=><Link key={i} href={safeContentLink(link.href)}>{link.label}</Link>)}<span>{home.header.utilityText}</span></div><Link href={safeContentLink(home.header.trackingHref)}>{home.header.trackingLabel}</Link></div>}
       {/* ======================== Main Bar ======================== */}
@@ -283,12 +299,7 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
             onSubmit={handleSearch}
             className="shop-search flex flex-1 mx-auto"
           >
-            <div
-              className={cn(
-                "relative w-full transition-all duration-300",
-                searchFocused && "max-w-2xl"
-              )}
-            >
+            <div className="relative w-full">
               <input
                 ref={searchRef}
                 type="search"
@@ -298,12 +309,13 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
                 onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
                 placeholder="Ürün, marka veya kategori ara..."
                 className={cn(
-                  "w-full h-12 pl-5 pr-12 rounded-md border bg-[#f3f4f6] text-sm text-text-primary",
+                  "w-full h-12 pl-5 pr-24 rounded-md border bg-[#f3f4f6] text-sm text-text-primary",
                   "placeholder:text-text-secondary",
                   "focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-300",
                   searchFocused ? "border-primary" : "border-border"
                 )}
               />
+              <ScanButton onClick={() => setScannerOpen(true)} />
               <button
                 type="submit"
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-md text-text-primary flex items-center justify-center hover:bg-primary-soft transition-colors"
@@ -459,8 +471,9 @@ export default function Header({ cartItemCount: cartItemCountProp }: HeaderProps
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Urun, marka veya kategori ara..."
-              className="w-full h-10 pl-4 pr-10 rounded-full border border-border bg-bg-primary text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
+              className="w-full h-10 pl-4 pr-24 rounded-full border border-border bg-bg-primary text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
             />
+            <ScanButton onClick={() => setScannerOpen(true)} />
             <button
               type="submit"
               className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center"

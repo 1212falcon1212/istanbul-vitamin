@@ -235,6 +235,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	productHandler := handlers.NewProductHandler()
 	api.Get("/products", productHandler.List)
 	api.Get("/products/featured", productHandler.Featured)
+	api.Get("/products/lookup/barcode", productHandler.LookupBarcode)
 	api.Get("/products/:slug", productHandler.GetBySlug)
 
 	// Categories (public)

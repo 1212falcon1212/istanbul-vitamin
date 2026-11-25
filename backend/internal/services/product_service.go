@@ -167,6 +167,17 @@ func (s *ProductService) Featured(limit int) ([]models.Product, error) {
 	return products, nil
 }
 
+// ActiveSlugsByBarcode resolves a package barcode on a product or an active variant.
+func (s *ProductService) ActiveSlugsByBarcode(code string) ([]string, error) {
+	var slugs []string
+	variants := s.db.Model(&models.ProductVariant{}).Select("product_id").
+		Where("is_active = ? AND barcode = ?", true, code)
+	err := s.db.Model(&models.Product{}).Where("is_active = ?", true).
+		Where("(barcode = ? OR id IN (?))", code, variants).
+		Limit(2).Pluck("slug", &slugs).Error
+	return slugs, err
+}
+
 // GetBySlug slug ile urun getirir ve goruntulenme sayisini arttirir.
 func (s *ProductService) GetBySlug(slug string) (*models.Product, error) {
 	var product models.Product

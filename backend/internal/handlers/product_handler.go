@@ -176,6 +176,25 @@ func (h *ProductHandler) Featured(c *fiber.Ctx) error {
 	})
 }
 
+func (h *ProductHandler) LookupBarcode(c *fiber.Ctx) error {
+	code := strings.TrimSpace(c.Query("code"))
+	if code == "" || len(code) > 50 {
+		return utils.BadRequest(c, "Geçersiz ürün barkodu")
+	}
+	slugs, err := h.service.ActiveSlugsByBarcode(code)
+	if err != nil {
+		return utils.InternalError(c)
+	}
+	switch len(slugs) {
+	case 0:
+		return utils.NotFound(c, "Ürün")
+	case 1:
+		return utils.SuccessResponse(c, fiber.Map{"slug": slugs[0]})
+	default:
+		return utils.ErrorResponse(c, fiber.StatusConflict, "Bu barkod birden fazla ürüne kayıtlı.")
+	}
+}
+
 // GetBySlug slug ile urun detayi dondurur.
 func (h *ProductHandler) GetBySlug(c *fiber.Ctx) error {
 	slug := c.Params("slug")
