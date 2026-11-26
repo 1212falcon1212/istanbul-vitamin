@@ -34,6 +34,7 @@ func (h *SearchHandler) Search(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	attachProductReviews(products)
 	pagination := &utils.Pagination{
 		Page:    page,
 		PerPage: perPage,
@@ -67,6 +68,7 @@ func (h *SearchHandler) Autocomplete(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	attachProductReviews(products)
 	return utils.SuccessResponse(c, fiber.Map{
 		"products": products,
 	})

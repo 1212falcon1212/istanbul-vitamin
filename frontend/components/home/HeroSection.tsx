@@ -5,7 +5,7 @@ import { safeContentLink } from "@/lib/home-content";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Banner, Product, Category } from "@/types";
+import type { Banner, Category } from "@/types";
 import { resolveImageUrl } from "@/lib/utils";
 import CategoryMenu from "@/components/layout/CategoryMenu";
 import BannerPicture from "./BannerPicture";
@@ -13,7 +13,6 @@ import BannerPicture from "./BannerPicture";
 interface HeroSectionProps {
   banners: Banner[];
   children?: ReactNode;
-  featuredProducts: Product[];
   categories: Category[];
 }
 function bannerHref(value?: string) {

@@ -51,6 +51,6 @@ func (s *AuthService) GoogleLogin(ctx context.Context, credential, clientID stri
 	if !user.IsActive {
 		return "", nil, errors.New("Hesabınız devre dışı")
 	}
-	token, err := middleware.GenerateToken(s.cfg, user.ID, user.Email, "user", passwordChangedAtUnix(user.PasswordChangedAt))
+	token, err := middleware.GenerateToken(s.cfg, user.ID, user.Email, "user", user.SessionVersion)
 	return token, &user, err
 }

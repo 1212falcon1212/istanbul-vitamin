@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/istanbulvitamin/backend/internal/models"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -37,6 +38,13 @@ func (h *FavoriteHandler) List(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	products := make([]*models.Product, 0, len(favorites))
+	for _, f := range favorites {
+		if f.Product != nil {
+			products = append(products, f.Product)
+		}
+	}
+	attachReviewSummaries(products)
 	pagination := &utils.Pagination{
 		Page:    page,
 		PerPage: perPage,

@@ -18,9 +18,12 @@ export default function BannerPicture({ banner, className, eager = false }: { ba
   const { props } = getImageProps({ src: resolveImageUrl(banner.image_url), alt: "", width, height, sizes, loading: eager ? "eager" : "lazy", fetchPriority: eager ? "high" : undefined });
   const [mobileWidth, mobileHeight] = banner.position === "hero" ? [880, 1100] : banner.position === "promo_strip" ? [1000, 500] : [width, height];
   const mobile = banner.image_url_mobile ? getImageProps({ src: resolveImageUrl(banner.image_url_mobile), alt: "", width: mobileWidth, height: mobileHeight, sizes: "100vw" }).props : null;
-  return <picture className={className}>
+  return <>
+    {eager && mobile && <link rel="preload" as="image" media="(max-width:767px)" imageSrcSet={mobile.srcSet} imageSizes={mobile.sizes} fetchPriority="high" />}
+    {eager && <link rel="preload" as="image" media={mobile ? "(min-width:768px)" : undefined} imageSrcSet={props.srcSet} imageSizes={props.sizes} fetchPriority="high" />}
+    <picture className={className}>
     {mobile && <source media="(max-width:767px)" srcSet={mobile.srcSet} sizes={mobile.sizes} width={mobileWidth} height={mobileHeight} />}
     {/* getImageProps supplies optimized src/srcSet for this art-directed picture. */}
     <img {...props} alt="" />
-  </picture>;
+  </picture></>;
 }

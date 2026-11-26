@@ -1,7 +1,9 @@
 package services
 
 import (
+	"context"
 	"errors"
+	"github.com/istanbulvitamin/backend/internal/cache"
 	"time"
 
 	"github.com/istanbulvitamin/backend/internal/models"
@@ -18,20 +20,24 @@ func NewBannerService(db *gorm.DB) *BannerService {
 
 // List tum aktif banner'lari dondurur.
 func (s *BannerService) List() ([]models.Banner, error) {
-	var banners []models.Banner
-	now := time.Now()
-
-	err := s.db.
-		Where("is_active = ?", true).
-		Where("(starts_at IS NULL OR starts_at <= ?)", now).
-		Where("(expires_at IS NULL OR expires_at >= ?)", now).
-		Order("sort_order ASC").
-		Find(&banners).Error
+	banners, err := cache.Remember(context.Background(), "banners:active:v1", time.Minute, func() ([]models.Banner, error) {
+		var rows []models.Banner
+		if err := s.db.Where("is_active = ?", true).Order("sort_order ASC, id ASC").Find(&rows).Error; err != nil {
+			return nil, errors.New("banner'lar listelenirken bir hata oluştu")
+		}
+		return rows, nil
+	})
 	if err != nil {
-		return nil, errors.New("banner'lar listelenirken bir hata oluştu")
+		return nil, err
 	}
-
-	return banners, nil
+	now := time.Now()
+	visible := make([]models.Banner, 0, len(banners))
+	for _, b := range banners {
+		if (b.StartsAt == nil || !now.Before(*b.StartsAt)) && (b.ExpiresAt == nil || !now.After(*b.ExpiresAt)) {
+			visible = append(visible, b)
+		}
+	}
+	return visible, nil
 }
 
 // GetByPosition belirli pozisyondaki aktif banner'lari sort_order sirasina gore dondurur.
@@ -68,6 +74,7 @@ func (s *BannerService) Create(banner *models.Banner) error {
 	if err := s.db.Create(banner).Error; err != nil {
 		return errors.New("banner oluşturulurken bir hata oluştu")
 	}
+	cache.Del(context.Background(), "banners:active:v1")
 	return nil
 }
 
@@ -87,6 +94,7 @@ func (s *BannerService) Update(banner *models.Banner) error {
 	if err := s.db.Save(banner).Error; err != nil {
 		return errors.New("banner güncellenirken bir hata oluştu")
 	}
+	cache.Del(context.Background(), "banners:active:v1")
 	return nil
 }
 
@@ -99,5 +107,6 @@ func (s *BannerService) Delete(id uint64) error {
 	if result.RowsAffected == 0 {
 		return errors.New("banner bulunamadı")
 	}
+	cache.Del(context.Background(), "banners:active:v1")
 	return nil
 }

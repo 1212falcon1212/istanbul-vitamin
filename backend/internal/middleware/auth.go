@@ -20,13 +20,10 @@ func NewAuthMiddleware(cfg *config.Config) *AuthMiddleware {
 }
 
 type JWTClaims struct {
-	UserID uint64 `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"` // "user", "super_admin", "admin", "editor"
-	// PwdAt token üretildiği andaki password_changed_at epoch saniyesi.
-	// Kullanıcı şifresini değiştirince PasswordChangedAt güncellenir ve bu değer ile
-	// DB'deki değer eşleşmezse token reddedilir (stale session).
-	PwdAt int64 `json:"pwd_at,omitempty"`
+	UserID         uint64 `json:"user_id"`
+	Email          string `json:"email"`
+	Role           string `json:"role"` // "user", "super_admin", "admin", "editor"
+	SessionVersion uint64 `json:"session_version"`
 	jwt.RegisteredClaims
 }
 
@@ -57,10 +54,11 @@ func (m *AuthMiddleware) OptionalAuthenticate(c *fiber.Ctx) error {
 	if err != nil || !token.Valid || claims.UserID == 0 || claims.Role != "user" {
 		return c.Next()
 	}
-	if !passwordTokenStillValid(claims) {
+	if !sessionStillValid(claims) {
 		return c.Next()
 	}
 	c.Locals("userID", claims.UserID)
+	c.Locals("sessionVersion", claims.SessionVersion)
 	c.Locals("email", claims.Email)
 	c.Locals("role", claims.Role)
 	return c.Next()
@@ -68,26 +66,11 @@ func (m *AuthMiddleware) OptionalAuthenticate(c *fiber.Ctx) error {
 
 // AdminAuthenticate admin panel oturumlarını doğrular — `admin_token` cookie veya
 // Authorization: Bearer header üzerinden. Rol super_admin/admin/editor değilse reddeder.
-//
-// Eski token'larda (rol claim'i eklenmeden önce üretilmiş) Role boş olabilir;
-// bu durumda admins tablosunda kullanıcıya bakıp rolü oradan tamamlıyoruz.
-// Aksi halde hala geçerli oturuma sahip adminlere 403 dönüyorduk — yeniden
-// login dışında çıkış yolu olmadığı için kullanıcıyı bloke ediyordu.
 func (m *AuthMiddleware) AdminAuthenticate(c *fiber.Ctx) error {
 	if err := m.parseAndSetClaims(c, "admin_token"); err != nil {
 		return err
 	}
 	role, _ := c.Locals("role").(string)
-	if role == "" {
-		userID, _ := c.Locals("userID").(uint64)
-		if userID > 0 && database.DB != nil {
-			var admin models.Admin
-			if err := database.DB.Select("id, role").First(&admin, userID).Error; err == nil {
-				role = admin.Role
-				c.Locals("role", role)
-			}
-		}
-	}
 	switch role {
 	case "super_admin", "admin", "editor":
 		return c.Next()
@@ -116,11 +99,12 @@ func (m *AuthMiddleware) parseAndSetClaims(c *fiber.Ctx, cookieName string) erro
 		return fiber.NewError(fiber.StatusUnauthorized, "Geçersiz veya süresi dolmuş token")
 	}
 
-	if !passwordTokenStillValid(claims) {
+	if !sessionStillValid(claims) {
 		return fiber.NewError(fiber.StatusUnauthorized, "Oturum sonlandırıldı. Lütfen tekrar giriş yapın.")
 	}
 
 	c.Locals("userID", claims.UserID)
+	c.Locals("sessionVersion", claims.SessionVersion)
 	c.Locals("email", claims.Email)
 	c.Locals("role", claims.Role)
 	return nil
@@ -139,50 +123,34 @@ func extractTokenFrom(c *fiber.Ctx, cookieName string) string {
 	return ""
 }
 
-// passwordTokenStillValid token'da kayıtlı pwd_at, DB'deki password_changed_at ile eşleşiyor mu.
-// DB hit tek indexli (PK) sorgudur; minimal maliyet.
-func passwordTokenStillValid(claims *JWTClaims) bool {
-	if claims.PwdAt == 0 {
-		// Eski token (alan set edilmeden üretilmiş) — geriye dönük uyumluluk için izin ver
-		return true
-	}
+func sessionStillValid(claims *JWTClaims) bool {
 	db := database.DB
-	if db == nil {
-		return true
+	if db == nil || claims.SessionVersion == 0 {
+		return false
 	}
+	var count int64
+	query := db.Model(&models.User{})
 	switch claims.Role {
+	case "user":
 	case "super_admin", "admin", "editor":
-		var admin models.Admin
-		if err := db.Select("id, password_changed_at").First(&admin, claims.UserID).Error; err != nil {
-			return false
-		}
-		if admin.PasswordChangedAt == nil {
-			return true
-		}
-		return admin.PasswordChangedAt.Unix() <= claims.PwdAt
+		query = db.Model(&models.Admin{}).Where("role = ?", claims.Role)
 	default:
-		var user models.User
-		if err := db.Select("id, password_changed_at").First(&user, claims.UserID).Error; err != nil {
-			return false
-		}
-		if user.PasswordChangedAt == nil {
-			return true
-		}
-		return user.PasswordChangedAt.Unix() <= claims.PwdAt
+		return false
 	}
+	return query.Where("id = ? AND is_active = ? AND session_version = ?", claims.UserID, true, claims.SessionVersion).Count(&count).Error == nil && count == 1
 }
 
-func GenerateToken(cfg *config.Config, userID uint64, email, role string, pwdAt int64) (string, error) {
+func GenerateToken(cfg *config.Config, userID uint64, email, role string, version uint64) (string, error) {
 	expiry, err := time.ParseDuration(cfg.JWTExpiry)
 	if err != nil {
 		expiry = 24 * time.Hour
 	}
 
 	claims := JWTClaims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
-		PwdAt:  pwdAt,
+		UserID:         userID,
+		Email:          email,
+		Role:           role,
+		SessionVersion: version,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

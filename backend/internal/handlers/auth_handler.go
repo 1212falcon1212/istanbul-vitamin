@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/istanbulvitamin/backend/internal/config"
@@ -126,20 +125,21 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return utils.BadRequest(c, err.Error())
 	}
 
-	pwdAt := int64(0)
-	if user.PasswordChangedAt != nil {
-		pwdAt = user.PasswordChangedAt.Unix()
-	}
-	token, err := middleware.GenerateToken(h.cfg, user.ID, user.Email, "user", pwdAt)
+	token, err := middleware.GenerateToken(h.cfg, user.ID, user.Email, "user", user.SessionVersion)
 	if err != nil {
 		return utils.InternalError(c)
 	}
 
 	setAuthCookie(c, token, h.cfg.AppEnv == "production", 24)
-	return utils.CreatedResponse(c, fiber.Map{
-		"token": token,
-		"user":  user,
-	})
+	return utils.CreatedResponse(c, sessionResponse(c, token, fiber.Map{"user": user}))
+}
+
+// Keep bearer tokens available to native clients while browser sessions use HttpOnly cookies.
+func sessionResponse(c *fiber.Ctx, token string, data fiber.Map) fiber.Map {
+	if c.Get("Origin") == "" && c.Get("Sec-Fetch-Mode") == "" && c.Cookies(authCookieName) == "" && c.Cookies(adminCookieName) == "" {
+		data["token"] = token
+	}
+	return data
 }
 
 // Login kullanici girisi yapar.
@@ -161,10 +161,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	setAuthCookie(c, token, h.cfg.AppEnv == "production", 24)
-	return utils.SuccessResponse(c, fiber.Map{
-		"token": token,
-		"user":  user,
-	})
+	return utils.SuccessResponse(c, sessionResponse(c, token, fiber.Map{"user": user}))
 }
 
 // AdminLogin admin girisi yapar.
@@ -187,10 +184,7 @@ func (h *AuthHandler) AdminLogin(c *fiber.Ctx) error {
 
 	// Admin panel oturumu için ayrı cookie — kullanıcı oturumu ile çakışmaz.
 	setAdminCookie(c, token, h.cfg.AppEnv == "production", 24)
-	return utils.SuccessResponse(c, fiber.Map{
-		"token": token,
-		"admin": admin,
-	})
+	return utils.SuccessResponse(c, sessionResponse(c, token, fiber.Map{"admin": admin}))
 }
 
 // RefreshToken mevcut token ile yeni token olusturur.
@@ -203,22 +197,11 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	email, _ := c.Locals("email").(string)
 	role, _ := c.Locals("role").(string)
 
-	// Refresh sırasında güncel password_changed_at'i DB'den oku
-	var pwdAt int64
-	if role == "super_admin" || role == "admin" || role == "editor" {
-		var a struct{ PasswordChangedAt *time.Time }
-		_ = database.DB.Table("admins").Select("password_changed_at").Where("id = ?", userID).Scan(&a).Error
-		if a.PasswordChangedAt != nil {
-			pwdAt = a.PasswordChangedAt.Unix()
-		}
-	} else {
-		var u struct{ PasswordChangedAt *time.Time }
-		_ = database.DB.Table("users").Select("password_changed_at").Where("id = ?", userID).Scan(&u).Error
-		if u.PasswordChangedAt != nil {
-			pwdAt = u.PasswordChangedAt.Unix()
-		}
+	version, ok := c.Locals("sessionVersion").(uint64)
+	if !ok {
+		return utils.Unauthorized(c)
 	}
-	token, err := middleware.GenerateToken(h.cfg, userID, email, role, pwdAt)
+	token, err := middleware.GenerateToken(h.cfg, userID, email, role, version)
 	if err != nil {
 		return utils.InternalError(c)
 	}
@@ -229,9 +212,7 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	} else {
 		setAuthCookie(c, token, h.cfg.AppEnv == "production", 24)
 	}
-	return utils.SuccessResponse(c, fiber.Map{
-		"token": token,
-	})
+	return utils.SuccessResponse(c, sessionResponse(c, token, fiber.Map{}))
 }
 
 // GetMe oturum acmis kullanicinin bilgilerini dondurur.
@@ -462,5 +443,5 @@ func (h *AuthHandler) GoogleLogin(c *fiber.Ctx) error {
 		return utils.BadRequest(c, "Google girişi tamamlanamadı. Bu e-posta zaten kayıtlıysa mevcut şifrenizle giriş yapın.")
 	}
 	setAuthCookie(c, token, h.cfg.AppEnv == "production", 24)
-	return utils.SuccessResponse(c, fiber.Map{"token": token, "user": user})
+	return utils.SuccessResponse(c, sessionResponse(c, token, fiber.Map{"user": user}))
 }

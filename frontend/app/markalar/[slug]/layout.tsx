@@ -1,3 +1,4 @@
+import { serializeJsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import type { Brand } from "@/types";
 import { fetchAPI } from "@/lib/fetch-api";
@@ -88,7 +89,7 @@ export default async function BrandLayout({ params, children }: Props) {
       {breadcrumbLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
         />
       )}
       {children}

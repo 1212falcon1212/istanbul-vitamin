@@ -1,9 +1,13 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"github.com/istanbulvitamin/backend/migrations"
+	"gorm.io/gorm"
+	"strings"
+)
 
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&NotificationEvent{},
 		&NotificationDelivery{},
 		&PushSubscription{},
@@ -40,5 +44,15 @@ func AutoMigrate(db *gorm.DB) error {
 		&Setting{},
 		&SyncLog{},
 		&NewsletterSubscriber{},
-	)
+	); err != nil {
+		return err
+	}
+	for _, statement := range strings.Split(migrations.SessionTriggers, ";") {
+		if sql := strings.TrimSpace(statement); sql != "" {
+			if err := db.Exec(sql).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

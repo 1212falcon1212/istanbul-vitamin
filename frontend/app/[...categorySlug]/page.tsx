@@ -1,3 +1,5 @@
+import MobileLCP from "@/components/MobileLCP";
+import { serializeJsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Category, Page } from "@/types";
@@ -285,11 +287,12 @@ async function CategoryView({
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
       <main className="flex-1">
         <div className="theme-container py-4">
+        <MobileLCP page="category" />
           <Breadcrumb items={breadcrumbItems} />
 
           {/* Category header */}

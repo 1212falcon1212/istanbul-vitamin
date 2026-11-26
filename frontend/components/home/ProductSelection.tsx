@@ -3,7 +3,7 @@ import { useHomeContent } from "@/lib/use-home-content";
 import { safeContentLink } from "@/lib/home-content";
 
 import { useEffect, useRef, useState } from "react";
-import type { Product } from "@/types";
+import type { ProductCardData } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 
 const tabs = [
@@ -16,8 +16,8 @@ export default function ProductSelection({
   newArrivals,
   bestSellers,
 }: {
-  newArrivals: Product[];
-  bestSellers: Product[];
+  newArrivals: ProductCardData[];
+  bestSellers: ProductCardData[];
 }) {
   const c = useHomeContent();
   const tabs = [
@@ -119,7 +119,7 @@ function SelectionSlider({
   products,
   label,
 }: {
-  products: Product[];
+  products: ProductCardData[];
   label: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);

@@ -8,10 +8,10 @@ test('obsolete session requests cannot finish loading before the current request
  useRef(v){const i=cursor++;return slots[i]??(slots[i]={current:v})},
  useCallback(fn){cursor++;return fn},useEffect(fn){effect=fn;},};react.default=react;
  const api={get:()=>new Promise(resolve=>requests.push(resolve))};
- const context={exports:{},localStorage:{getItem:()=>null},window:{addEventListener:(_,fn)=>listener=fn,removeEventListener:()=>{}},require:n=>n==='react'?react:n==='./api'?{api,APIError:class extends Error{}}:n==='./push'?{}:null};
+ const context={exports:{},localStorage:{getItem:()=>null,removeItem:()=>{}},window:{location:{pathname:"/"},addEventListener:(_,fn)=>listener=fn,removeEventListener:()=>{}},require:n=>n==='react'?react:n==='./api'?{api,APIError:class extends Error{}}:n==='./push'?{}:null};
  vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/auth.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText,context);
  const render=()=>{cursor=0;return context.exports.AuthProvider({children:null})};
- assert.equal(render().isLoading,true);effect();listener({key:'auth_token'});
+ assert.equal(render().isLoading,true);effect();listener({key:'auth_role'});
  requests[0]({data:{user:{id:1}}});await new Promise(setImmediate);
  assert.equal(render().isLoading,true);assert.equal(render().user,null);
  requests[1]({data:{user:{id:38}}});await new Promise(setImmediate);

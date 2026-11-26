@@ -151,6 +151,9 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
  */
 export function resolveImageUrl(url?: string | null): string {
   if (!url) return "";
+  if (url === "/banners/campaigns-2026-11/bakimina-iyi-gelen-firsatlar.png") {
+    return "/banners/campaigns-2026-11/bakimina-iyi-gelen-firsatlar.webp";
+  }
   if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:")) {
     return url;
   }

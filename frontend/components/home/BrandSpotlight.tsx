@@ -1,13 +1,13 @@
 "use client";
 
-import type { Product, Brand, Banner } from "@/types";
+import type { ProductCardData, Brand, Banner } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import { PromoBanner } from "./ThemePromos";
 import styles from "./BrandSpotlight.module.css";
 
 export interface BrandSpotlightData {
   brand: Brand;
-  products: Product[];
+  products: ProductCardData[];
   product_count: number;
 }
 

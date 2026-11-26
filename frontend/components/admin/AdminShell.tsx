@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 interface AdminShellProps {
@@ -66,48 +67,34 @@ const navEntries: NavEntry[] = [
   { kind: "link", href: "/yonetim/marketplace", label: "Pazaryeri", icon: MarketplaceIcon },
 ];
 
+const editorSections = ["/yonetim/urunler", "/yonetim/kategoriler", "/yonetim/markalar", "/yonetim/varyasyonlar", "/yonetim/kampanyalar", "/yonetim/sayfalar", "/yonetim/anasayfa", "/yonetim/bannerlar"];
+function editorPage(path: string) {
+  return editorSections.some(section => path === section || path.startsWith(section + "/"));
+}
+
 export default function AdminShell({ title, children }: AdminShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthed, setIsAuthed] = useState(false);
+  const { admin, isLoading, adminLogout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [adminName, setAdminName] = useState("");
+  const adminName = admin?.full_name || "Admin";
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    const role = localStorage.getItem("admin_role");
-    if (!token || !["super_admin", "admin", "editor"].includes(role || "")) {
-      router.push("/yonetim/giris");
-      return;
-    }
-    setIsAuthed(true);
-    setAdminName(localStorage.getItem("admin_name") || "Admin");
-  }, [router]);
+    if (!isLoading && !admin) router.replace("/yonetim/giris");
+    if (admin?.role === "editor" && !editorPage(pathname)) router.replace("/yonetim/urunler");
+  }, [admin, isLoading, pathname, router]);
 
   async function handleLogout() {
-    try {
-      // Backend admin cookie'sini temizler.
-      await fetch(
-        (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1") +
-          "/admin/logout",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("admin_token") ?? ""}`,
-          },
-        }
-      );
-    } catch {
-      // ignore
-    }
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_role");
-    localStorage.removeItem("admin_name");
-    router.push("/yonetim/giris");
+    await adminLogout();
+    router.replace("/yonetim/giris");
   }
 
-  if (!isAuthed) return null;
+  if (!admin || (admin.role === "editor" && !editorPage(pathname))) return null;
+  const entries = admin.role === "editor" ? navEntries.flatMap<NavEntry>(entry => {
+    if (entry.kind === "link") return editorPage(entry.href) ? [entry] : [];
+    const items = entry.items.filter(item => editorPage(item.href));
+    return items.length ? [{ ...entry, items }] : [];
+  }) : navEntries;
 
   function isActive(href: string): boolean {
     if (href === "/yonetim") return pathname === "/yonetim";
@@ -152,7 +139,7 @@ export default function AdminShell({ title, children }: AdminShellProps) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navEntries.map((entry, idx) => {
+          {entries.map((entry, idx) => {
             if (entry.kind === "link") {
               const active = isActive(entry.href);
               const Icon = entry.icon;

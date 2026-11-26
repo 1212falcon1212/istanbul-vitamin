@@ -82,6 +82,21 @@ func (h *SettingHandler) GetByGroup(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateHomepage exposes only editorial content to the editor role.
+func (h *SettingHandler) UpdateHomepage(c *fiber.Ctx) error {
+	var req struct {
+		Content string `json:"content"`
+	}
+	if c.BodyParser(&req) != nil || len(req.Content) > 65536 || !json.Valid([]byte(req.Content)) {
+		return utils.BadRequest(c, "Geçerli ana sayfa içeriği gerekli")
+	}
+	err := h.service.UpdatePreservingSecrets([]models.Setting{{Key: "homepage_content", Group: "homepage", Value: req.Content}})
+	if err != nil {
+		return utils.InternalError(c)
+	}
+	return utils.SuccessMessageResponse(c, "Ana sayfa kaydedildi")
+}
+
 // Update ayarlari toplu olarak gunceller (admin).
 func (h *SettingHandler) Update(c *fiber.Ctx) error {
 	var req updateSettingsRequest
@@ -147,7 +162,9 @@ func (h *SettingHandler) TestBizimhesap(c *fiber.Ctx) error {
 		cfg.FirmID = s
 	}
 	if s := strings.TrimSpace(req.BaseURL); s != "" {
-		cfg.BaseURL = s
+		if strings.TrimRight(s, "/") != bizimhesap.DefaultBaseURL {
+			return utils.BadRequest(c, "Geçersiz sağlayıcı adresi")
+		}
 	}
 	if strings.TrimSpace(cfg.FirmID) == "" {
 		return utils.BadRequest(c, "firmId tanımlı değil")

@@ -2,7 +2,7 @@
 import { useHomeContent } from "@/lib/use-home-content";
 import { safeContentLink } from "@/lib/home-content";
 import Link from "next/link";
-import type { Banner, Product } from "@/types";
+import type { Banner, ProductCardData } from "@/types";
 import { bannersAt } from "@/lib/banner-slots";
 import ProductCard from "@/components/product/ProductCard";
 import { PromoBanner } from "./ThemePromos";
@@ -12,7 +12,7 @@ export default function BannerProductRows({
   products,
 }: {
   banners: Banner[];
-  products: Product[];
+  products: ProductCardData[];
 }) {
   const c = useHomeContent();
   const promos = bannersAt(banners, "promo_inline");

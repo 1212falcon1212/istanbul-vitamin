@@ -4,9 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import useSWR from "swr";
 import { toast } from "sonner";
-import type { Product } from "@/types";
+import type { Product, ProductCardData } from "@/types";
 import { api } from "@/lib/api";
 import { catalogPreview, catalogPreviewEnabled } from "@/lib/catalog-preview";
 import { formatPrice, calcDiscount, resolveImageUrl } from "@/lib/utils";
@@ -15,7 +14,7 @@ import { useCartDrawer } from "@/lib/cart-drawer";
 import { useFavorites } from "@/lib/favorites";
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductCardData;
   index?: number;
   onAddToCart?: () => void | Promise<void>;
   onToggleFavorite?: () => void | Promise<void>;
@@ -23,19 +22,9 @@ interface ProductCardProps {
   /** Kept for existing callers; every listing uses the shared vertical design. */
   variant?: "horizontal" | "vertical";
 }
-interface ReviewData { stats: { average_rating: number; total_count: number } }
-async function fetchReviews(path: string): Promise<ReviewData> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}${path}`);
-  if (!response.ok) throw new Error("Değerlendirmeler yüklenemedi");
-  const json = await response.json();
-  return json.data;
-}
-
 export default function ProductCard({ product, onAddToCart, onToggleFavorite, isFavorite = false }: ProductCardProps) {
   const router = useRouter();
-  const cardRef = useRef<HTMLElement>(null);
   const pending = useRef(false);
-  const [visible, setVisible] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(false);
   const preview = previewEnabled ? catalogPreview(product) : null;
   const [isNew, setIsNew] = useState(false);
@@ -45,8 +34,7 @@ export default function ProductCard({ product, onAddToCart, onToggleFavorite, is
   const { open } = useCartDrawer();
   const { isFavorite: inFavorites, toggle } = useFavorites();
   const favored = onToggleFavorite ? isFavorite : inFavorites(product.id);
-  const { data: reviews, error: reviewError } = useSWR(visible && !previewEnabled ? `/products/${product.id}/reviews?per_page=1` : null, fetchReviews, { revalidateOnFocus: false, dedupingInterval: 60000 });
-  const stats = preview ? { average_rating: preview.rating, total_count: preview.count } : reviews?.stats;
+  const stats = preview ? { average_rating: preview.rating, total_count: preview.count } : product.review_stats;
   const rating = Math.max(0, Math.min(5, stats?.average_rating ?? 0));
   const image = product.images?.find((item) => item.is_primary) ?? product.images?.[0];
   const comparePrice = preview?.comparePrice ?? product.compare_price;
@@ -57,13 +45,6 @@ export default function ProductCard({ product, onAddToCart, onToggleFavorite, is
     setPreviewEnabled(catalogPreviewEnabled(window.location.hostname));
     const age = Date.now() - Date.parse(product.created_at);
     setIsNew(Number.isFinite(age) && age >= 0 && age < 30 * 24 * 60 * 60 * 1000);
-    const element = cardRef.current;
-    if (!element) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: "150px" });
-    observer.observe(element);
-    return () => observer.disconnect();
   }, [product.created_at]);
 
   async function handleFavorite() {
@@ -92,7 +73,7 @@ export default function ProductCard({ product, onAddToCart, onToggleFavorite, is
   }
 
   return (
-    <article ref={cardRef} className="catalog-product-card" data-preview={previewEnabled || undefined} data-discount={discount > 0 || undefined}>
+    <article className="catalog-product-card" data-preview={previewEnabled || undefined} data-discount={discount > 0 || undefined}>
       <div className="catalog-product-image">
         <Link href={href} aria-label={product.name} className="absolute inset-0">
           {image ? <Image src={resolveImageUrl(image.image_url)} alt={image.alt_text || product.name} fill sizes="(min-width:1440px) 320px, (min-width:1200px) 25vw, (min-width:768px) 33vw, 50vw" className="object-contain p-2 mix-blend-multiply" /> : <span className="flex h-full items-center justify-center p-3 text-center text-xs text-text-secondary">Görsel hazırlanıyor</span>}
@@ -117,7 +98,7 @@ export default function ProductCard({ product, onAddToCart, onToggleFavorite, is
             </span>
             <strong className="theme-review-average">{rating.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong>
             <span title={preview ? "Lokal örnek değerlendirme" : "Değerlendirme sayısı"}>{stats.total_count.toLocaleString("tr-TR")}{preview ? " örnek" : ""}</span>
-          </> : <span className="text-[#82758f]">{stats ? "Henüz değerlendirme yok" : reviewError ? "Değerlendirme bilgisi alınamadı" : "Değerlendirmeler yükleniyor"}</span>}
+          </> : <span className="text-[#82758f]">{stats ? "Henüz değerlendirme yok" : "Değerlendirme bilgisi alınamadı"}</span>}
         </div>
         <div className="catalog-product-pricing price">
           <strong>{formatPrice(product.price)}</strong>

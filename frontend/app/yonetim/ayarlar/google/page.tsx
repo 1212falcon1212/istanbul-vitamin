@@ -25,7 +25,6 @@ const fields = [
 ];
 const secrets = ["client_secret", "refresh_token", "developer_token"];
 async function request(path: string, method = "GET", body?: unknown) {
-  const token = localStorage.getItem("admin_token");
   const r = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/admin/google/${path}`,
     {
@@ -34,7 +33,6 @@ async function request(path: string, method = "GET", body?: unknown) {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     },

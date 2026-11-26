@@ -22,6 +22,9 @@ interface DashboardStats {
   total_customers: number;
 }
 
+type MobileStat = { page: "home" | "category" | "product"; samples: number; p75_ms: number };
+const pageNames = { home: "Ana sayfa", category: "Kategori", product: "Ürün" };
+
 interface SalesPoint {
   date: string;
   revenue: number;
@@ -30,6 +33,7 @@ interface SalesPoint {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [mobile, setMobile] = useState<MobileStat[] | null>(null);
   const [sales, setSales] = useState<SalesPoint[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
@@ -73,6 +77,7 @@ export default function AdminDashboard() {
       }
     }
     fetchDashboard();
+    api.get<MobileStat[]>("/admin/dashboard/mobile-lcp").then(r => setMobile(r.data ?? [])).catch(() => {});
   }, []);
 
   const totalChartRevenue = useMemo(
@@ -372,6 +377,11 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+      <section className="rounded-lg border border-border bg-white p-5">
+        <h2 className="font-semibold">Mobil açılış süresi (LCP)</h2>
+        <p className="text-sm text-text-secondary">Son 7 takvim günü · ziyaretlerin %75’inde ana içerik bu süre içinde göründü.</p>
+        {mobile ? <ul>{mobile.map(row => <li key={row.page}>{pageNames[row.page]} · {row.samples ? (row.p75_ms > 120000 ? ">120 sn" : (row.p75_ms / 1000).toLocaleString("tr-TR") + " sn") : "Henüz ölçüm yok"} · {row.samples} ölçüm</li>)}</ul> : <p>Ölçüm verisi bekleniyor.</p>}
+      </section>
     </AdminShell>
   );
 }

@@ -22,8 +22,7 @@ export default function BasariliPage({ searchParams }: BasariliPageProps) {
     let cancelled=false;let attempts=0;let timer:ReturnType<typeof setTimeout>;
     async function check() {
       try {
-        const token=localStorage.getItem("auth_token");
-        const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/tracking/purchase/${encodeURIComponent(orderNumber)}`,{cache:"no-store",credentials:"include",headers:token?{Authorization:`Bearer ${token}`}:{}});
+        const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/tracking/purchase/${encodeURIComponent(orderNumber)}`,{cache:"no-store",credentials:"include"});
         if (!response.ok) return;
         const result=await response.json();
         if(cancelled)return;

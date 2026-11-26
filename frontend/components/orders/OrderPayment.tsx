@@ -18,9 +18,8 @@ export default function OrderPayment({ order, admin = false, onChange }: {order:
   setBusy(true);setMessage("");
   try {
    if(file && (file.size > 5*1024*1024 || !["application/pdf","image/jpeg","image/png"].includes(file.type))) throw new Error("En fazla 5 MB PDF, JPEG veya PNG seçin.");
-   const token=localStorage.getItem(admin ? "admin_token" : "auth_token");
    const body=file ? new FormData() : undefined; if(file) body!.append("file",file);
-   const res=await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}${endpoint}/receipt`,{method:file?"POST":"GET",body,credentials:"include",headers:token?{Authorization:`Bearer ${token}`}:{}});
+   const res=await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}${endpoint}/receipt`,{method:file?"POST":"GET",body,credentials:"include"});
    if(!res.ok) {const result=await res.json();throw new Error(result.error || "Dekont işlemi başarısız");}
    if(file) {setMessage("Dekont alındı. Ödeme kontrolü bekleniyor.");await onChange();}
    else {const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`dekont-${order.order_number}.${blob.type.includes("pdf")?"pdf":blob.type.includes("png")?"png":"jpg"}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}

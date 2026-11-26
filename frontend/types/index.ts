@@ -26,13 +26,14 @@ export interface Admin {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   user?: User;
   admin?: Admin;
 }
 
 // --- Product ---
 export interface Product {
+  review_stats?: { average_rating: number; total_count: number };
   id: number;
   brand_id: number | null;
   sku: string;
@@ -66,6 +67,8 @@ export interface Product {
   variants?: ProductVariant[];
   tags?: ProductTag[];
 }
+
+export type ProductCardData = Pick<Product, "review_stats" | "id" | "slug" | "name" | "price" | "compare_price" | "stock" | "created_at" | "brand" | "images">;
 
 export interface ProductImage {
   id: number;

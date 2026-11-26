@@ -80,6 +80,7 @@ func (h *CampaignHandler) GetBySlug(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	attachProductReviews(campaign.Products)
 	return utils.SuccessResponse(c, fiber.Map{
 		"campaign": campaign,
 	})

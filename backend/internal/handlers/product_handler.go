@@ -145,6 +145,7 @@ func (h *ProductHandler) List(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	attachProductReviews(products)
 	pagination := &utils.Pagination{
 		Page:    page,
 		PerPage: perPage,
@@ -171,6 +172,7 @@ func (h *ProductHandler) Featured(c *fiber.Ctx) error {
 		return utils.InternalError(c)
 	}
 
+	attachProductReviews(products)
 	return utils.SuccessResponse(c, fiber.Map{
 		"products": products,
 	})
@@ -214,6 +216,17 @@ func (h *ProductHandler) GetBySlug(c *fiber.Ctx) error {
 
 // ---------- Admin endpoints ----------
 
+type adminProductFields models.Product
+
+type adminProduct struct {
+	*adminProductFields
+	CostPrice *float64 `json:"cost_price,omitempty"`
+}
+
+func productForAdmin(p *models.Product) adminProduct {
+	return adminProduct{(*adminProductFields)(p), p.CostPrice}
+}
+
 // AdminGetByID admin düzenleme sayfası için numeric ID ile ürün detayı döner
 // (inaktif ürünler dahil, tüm ilişkiler preload).
 func (h *ProductHandler) AdminGetByID(c *fiber.Ctx) error {
@@ -228,7 +241,7 @@ func (h *ProductHandler) AdminGetByID(c *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(c, fiber.Map{
-		"product": product,
+		"product": productForAdmin(product),
 	})
 }
 
@@ -281,8 +294,12 @@ func (h *ProductHandler) AdminList(c *fiber.Ctx) error {
 	}
 	pagination.Calculate()
 
+	items := make([]adminProduct, len(products))
+	for i := range products {
+		items[i] = productForAdmin(&products[i])
+	}
 	return utils.PaginatedSuccessResponse(c, fiber.Map{
-		"products": products,
+		"products": items,
 	}, pagination)
 }
 
@@ -380,7 +397,7 @@ func (h *ProductHandler) Create(c *fiber.Ctx) error {
 	}
 
 	return utils.CreatedResponse(c, fiber.Map{
-		"product": fullProduct,
+		"product": productForAdmin(fullProduct),
 	})
 }
 
@@ -557,7 +574,7 @@ func (h *ProductHandler) Update(c *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(c, fiber.Map{
-		"product": fullProduct,
+		"product": productForAdmin(fullProduct),
 	})
 }
 

@@ -1,3 +1,5 @@
+import MobileLCP from "@/components/MobileLCP";
+import { serializeJsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Product } from "@/types";
@@ -135,6 +137,7 @@ export default async function ProductDetailPage({ params }: Props) {
       <Header />
 
       <main className="flex-1 theme-product-detail">
+        <MobileLCP page="product" />
         <div className="theme-container pdp-container">
           <Breadcrumb items={breadcrumbItems} />
 
@@ -150,11 +153,11 @@ export default async function ProductDetailPage({ params }: Props) {
 
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
         />
       </main>
 

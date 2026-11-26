@@ -89,7 +89,7 @@ func (s *AuthService) Login(email, password string) (string, *models.User, error
 		return "", nil, errors.New("e-posta adresi veya şifre hatalı")
 	}
 
-	token, err := middleware.GenerateToken(s.cfg, user.ID, user.Email, "user", passwordChangedAtUnix(user.PasswordChangedAt))
+	token, err := middleware.GenerateToken(s.cfg, user.ID, user.Email, "user", user.SessionVersion)
 	if err != nil {
 		return "", nil, errors.New("token oluşturulurken bir hata oluştu")
 	}
@@ -115,20 +115,12 @@ func (s *AuthService) AdminLogin(email, password string) (string, *models.Admin,
 		return "", nil, errors.New("e-posta adresi veya şifre hatalı")
 	}
 
-	token, err := middleware.GenerateToken(s.cfg, admin.ID, admin.Email, admin.Role, passwordChangedAtUnix(admin.PasswordChangedAt))
+	token, err := middleware.GenerateToken(s.cfg, admin.ID, admin.Email, admin.Role, admin.SessionVersion)
 	if err != nil {
 		return "", nil, errors.New("token oluşturulurken bir hata oluştu")
 	}
 
 	return token, &admin, nil
-}
-
-// passwordChangedAtUnix JWT claim'i için pwd_at saniyesi. Nil ise 0 (geriye dönük uyum).
-func passwordChangedAtUnix(t *time.Time) int64 {
-	if t == nil {
-		return 0
-	}
-	return t.Unix()
 }
 
 // GetUserByID kullaniciyi ID ile getirir.

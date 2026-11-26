@@ -1,10 +1,9 @@
 import { cache } from "react";
 import { parseHomeContent, type HomeContent } from "./home-content";
-import type { Category, Product, Brand, Banner } from "@/types";
+import type { Category, Product, ProductCardData, Brand, Banner } from "@/types";
 import type { BrandSpotlightData } from "@/components/home/BrandSpotlight";
-import type { ConcernItem } from "@/components/home/SkinConcerns";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 // ----------------------------------------------------------------
 // Internal response types (match Go backend)
@@ -16,9 +15,6 @@ interface CategoriesResponse {
 interface ProductsResponse {
   products: Product[];
 }
-interface ConcernsResponse {
-  concerns: ConcernItem[];
-}
 interface BannersResponse {
   banners: Banner[];
 }
@@ -26,12 +22,10 @@ interface BannersResponse {
 export interface HomepageData {
   content: HomeContent;
   categories: Category[];
-  trending: Product[];
-  bestSellers: Product[];
-  recommended: Product[];
+  trending: ProductCardData[];
+  bestSellers: ProductCardData[];
   spotlight: BrandSpotlightData | null;
-  concerns: ConcernItem[];
-  newArrivals: Product[];
+  newArrivals: ProductCardData[];
   brands: Brand[];
   banners: Banner[];
 }
@@ -62,7 +56,6 @@ export const fetchHomepageData = cache(
       trendingRaw,
       recommendedRaw,
       spotlightRaw,
-      concernsRaw,
       newArrivalsRaw,
       brandsRaw,
       bannersRaw,
@@ -72,7 +65,6 @@ export const fetchHomepageData = cache(
       safeFetch<ProductsResponse>(`${API}/products?sort=trending&per_page=30`),
       safeFetch<ProductsResponse>(`${API}/products?sort=featured&per_page=12`),
       safeFetch<BrandSpotlightData>(`${API}/brands/spotlight`),
-      safeFetch<ConcernsResponse>(`${API}/skin-concerns`),
       safeFetch<ProductsResponse>(`${API}/products?sort=newest&per_page=12`),
       safeFetch<Brand[]>(`${API}/brands?per_page=500`),
       safeFetch<BannersResponse>(`${API}/banners`),
@@ -128,32 +120,28 @@ export const fetchHomepageData = cache(
       .filter((p) => !recommendedIds.has(p.id))
       .slice(0, 12);
 
+    function card({ id, slug, name, price, compare_price, stock, created_at, review_stats, brand, images }: Product): ProductCardData {
+      const image = images?.find(item => item.is_primary) ?? images?.[0];
+      return { id, slug, name, price, compare_price, stock, created_at, review_stats, brand, images: image ? [image] : [] };
+    }
+
+    const [featured, best, spotlightItems, newest] = await Promise.all([
+      curated(content.featured.productIds, trending),
+      curated(content.selection.bestProductIds, trendingProducts.filter(p => p.sold_count > 0).slice(0, 12)),
+      spotlightBrand ? curated(content.spotlight.productIds, spotlightProducts?.products ?? []) : [],
+      curated(content.selection.newProductIds, newArrivalsRaw?.products ?? []),
+    ]);
     return {
       content,
       categories: categories?.categories ?? [],
-      trending: await curated(content.featured.productIds, trending),
-      bestSellers: await curated(
-        content.selection.bestProductIds,
-        trendingProducts
-          .filter((product) => product.sold_count > 0)
-          .slice(0, 12),
-      ),
-      recommended,
-      spotlight: spotlightBrand
-        ? {
-            brand: spotlightBrand,
-            product_count: spotlightRaw?.product_count ?? 0,
-            products: await curated(
-              content.spotlight.productIds,
-              spotlightProducts?.products ?? [],
-            ),
-          }
-        : null,
-      concerns: concernsRaw?.concerns ?? [],
-      newArrivals: await curated(
-        content.selection.newProductIds,
-        newArrivalsRaw?.products ?? [],
-      ),
+      trending: featured.map(card),
+      bestSellers: best.map(card),
+      spotlight: spotlightBrand ? {
+        brand: spotlightBrand,
+        product_count: spotlightRaw?.product_count ?? 0,
+        products: spotlightItems.map(card),
+      } : null,
+      newArrivals: newest.map(card),
       brands: Array.isArray(brandsRaw) ? brandsRaw : [],
       banners: bannersRaw?.banners ?? [],
     };

@@ -23,7 +23,7 @@ func (m *AdminMiddleware) RequireAdmin(c *fiber.Ctx) error {
 	}
 
 	switch role {
-	case "super_admin", "admin", "editor":
+	case "super_admin", "admin":
 		return c.Next()
 	default:
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{

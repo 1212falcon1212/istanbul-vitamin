@@ -221,7 +221,7 @@ export default function HomeEditor() {
   const { reload } = useSettings();
   useEffect(() => {
     api
-      .get<{ settings: Record<string, string> }>("/admin/settings")
+      .get<{ settings: Record<string, string> }>("/settings")
       .then((r) =>
         setContent(parseHomeContent(r.data?.settings.homepage_content)),
       )
@@ -256,15 +256,7 @@ export default function HomeEditor() {
             setBusy(true);
             setMessage("");
             try {
-              await api.put("/admin/settings", {
-                settings: [
-                  {
-                    key: "homepage_content",
-                    value: JSON.stringify(content),
-                    group: "homepage",
-                  },
-                ],
-              });
+              await api.put("/admin/homepage", { content: JSON.stringify(content) });
               await reload();
               setMessage(
                 "Kaydedildi. Ana sayfayı yenilediğinizde yeni içerik görünür.",

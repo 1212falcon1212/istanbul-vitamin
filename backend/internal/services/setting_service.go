@@ -255,7 +255,7 @@ func (s *SettingService) BizimhesapConfig() (bizimhesap.Config, error) {
 	cfg := bizimhesap.Config{
 		Enabled:        strings.EqualFold(strings.TrimSpace(all["bizimhesap.enabled"]), "true"),
 		FirmID:         strings.TrimSpace(all["bizimhesap.firm_id"]),
-		BaseURL:        strings.TrimSpace(all["bizimhesap.base_url"]),
+		BaseURL:        bizimhesap.DefaultBaseURL,
 		DefaultTaxRate: 20,
 	}
 	if v := strings.TrimSpace(all["bizimhesap.default_tax_rate"]); v != "" {

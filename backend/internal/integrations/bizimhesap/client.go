@@ -40,15 +40,13 @@ type Client struct {
 
 // NewClient hazır bir Client döndürür. Config.BaseURL boşsa DefaultBaseURL kullanılır.
 func NewClient(cfg Config) *Client {
-	if strings.TrimSpace(cfg.BaseURL) == "" {
-		cfg.BaseURL = DefaultBaseURL
-	}
+	cfg.BaseURL = DefaultBaseURL
 	if cfg.DefaultTaxRate <= 0 {
 		cfg.DefaultTaxRate = 20
 	}
 	return &Client{
 		cfg:  cfg,
-		http: &http.Client{Timeout: DefaultTimeout},
+		http: &http.Client{Timeout: DefaultTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	}
 }
 

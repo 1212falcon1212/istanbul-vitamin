@@ -1,3 +1,4 @@
+import MobileLCP from "@/components/MobileLCP";
 import { Fragment } from "react";
 import { safeContentLink, selectedByIds } from "@/lib/home-content";
 import type { Metadata } from "next";
@@ -103,10 +104,10 @@ export default async function HomePage() {
     <>
       <Header />
       <main className="storefront-home grogin-home">
+        <MobileLCP page="home" />
         {c.hero.enabled && (
           <HeroSection
             banners={data.banners}
-            featuredProducts={data.trending.slice(0, 4)}
             categories={data.categories}
           />
         )}

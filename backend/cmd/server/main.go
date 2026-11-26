@@ -46,11 +46,15 @@ func main() {
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
-		AppName:      "İstanbul Vitamin API",
-		BodyLimit:    int(cfg.MaxUploadSize),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		AppName:                 "İstanbul Vitamin API",
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          []string{"127.0.0.1", "::1"},
+		ProxyHeader:             "X-Real-IP",
+		EnableIPValidation:      true,
+		BodyLimit:               int(cfg.MaxUploadSize),
+		ReadTimeout:             15 * time.Second,
+		WriteTimeout:            30 * time.Second,
+		IdleTimeout:             60 * time.Second,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
@@ -143,6 +147,7 @@ func main() {
 func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *aras.Service, cancellationSvc *services.CancellationService, settingSvc *services.SettingService) {
 	api := app.Group("/api/v1", func(c *fiber.Ctx) error { c.Set("Cache-Control", "no-store"); return c.Next() })
 
+	api.Post("/metrics/mobile-lcp", limiter.New(limiter.Config{Max: 120, Expiration: time.Minute}), handlers.RecordMobileLCP)
 	pushHandler := &handlers.PushHandler{}
 	api.Get("/push/config", pushHandler.Config)
 	api.Post("/push/subscribe", middleware.NewAuthMiddleware(cfg).OptionalAuthenticate, limiter.New(limiter.Config{Max: 10, Expiration: time.Minute}), pushHandler.Subscribe)
@@ -213,7 +218,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	auth.Post("/google", authLimiter, authHandler.GoogleLogin)
 	auth.Post("/login", authLimiter, authHandler.Login)
 	auth.Post("/admin/login", authLimiter, authHandler.AdminLogin)
-	auth.Post("/refresh", authHandler.RefreshToken)
+	auth.Post("/refresh", middleware.NewAuthMiddleware(cfg).Authenticate, authHandler.RefreshToken)
 	auth.Post("/forgot-password", forgotLimiter, authHandler.ForgotPassword)
 	auth.Post("/reset-password", resetLimiter, authHandler.ResetPassword)
 	auth.Post("/verify-email", authHandler.VerifyEmail)
@@ -356,7 +361,7 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	// Admin routes
 	// Admin paneli ayrı cookie (`admin_token`) üzerinden çalışır; user oturumu
 	// ile aynı tarayıcıda çakışmaz. AdminAuthenticate hem token parse hem rol kontrolü yapar.
-	_ = middleware.NewAdminMiddleware(cfg) // legacy — artık RequireAdmin kullanılmıyor
+	operations := middleware.NewAdminMiddleware(cfg).RequireAdmin
 	requireAdminAuth := userMiddleware.AdminAuthenticate
 	admin := api.Group("/admin", requireAdminAuth)
 
@@ -402,26 +407,26 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	api.Get("/variations", variationHandler.PublicListTypes)
 
 	// Admin - Orders
-	admin.Get("/orders", orderHandler.AdminList)
-	admin.Get("/orders/:id", orderHandler.AdminGetByID)
-	admin.Get("/orders/:id/receipt", orderHandler.AdminDownloadReceipt)
-	admin.Post("/orders/:id/confirm-transfer", orderHandler.ConfirmTransfer)
-	admin.Post("/orders/:id/approve", orderHandler.Approve)
-	admin.Put("/orders/:id/status", orderHandler.UpdateStatus)
-	admin.Post("/orders/:id/invoice/regenerate", orderHandler.RegenerateInvoice)
+	admin.Get("/orders", operations, orderHandler.AdminList)
+	admin.Get("/orders/:id", operations, orderHandler.AdminGetByID)
+	admin.Get("/orders/:id/receipt", operations, orderHandler.AdminDownloadReceipt)
+	admin.Post("/orders/:id/confirm-transfer", operations, orderHandler.ConfirmTransfer)
+	admin.Post("/orders/:id/approve", operations, orderHandler.Approve)
+	admin.Put("/orders/:id/status", operations, orderHandler.UpdateStatus)
+	admin.Post("/orders/:id/invoice/regenerate", operations, orderHandler.RegenerateInvoice)
 
 	// Admin - Aras Kargo entegrasyonu
 	arasHandler := handlers.NewArasHandler(arasSvc, settingSvc)
-	admin.Post("/orders/:id/aras/ship", arasHandler.Ship)
-	admin.Post("/orders/:id/aras/refresh", arasHandler.Refresh)
-	admin.Post("/orders/:id/aras/cancel", arasHandler.CancelShipment)
-	admin.Get("/orders/:id/aras/labels", arasHandler.Labels)
-	admin.Post("/aras/sender-address/register", arasHandler.RegisterSender)
+	admin.Post("/orders/:id/aras/ship", operations, arasHandler.Ship)
+	admin.Post("/orders/:id/aras/refresh", operations, arasHandler.Refresh)
+	admin.Post("/orders/:id/aras/cancel", operations, arasHandler.CancelShipment)
+	admin.Get("/orders/:id/aras/labels", operations, arasHandler.Labels)
+	admin.Post("/aras/sender-address/register", operations, arasHandler.RegisterSender)
 
 	// Admin - Cancellation/Return kuyruğu
-	admin.Get("/cancellations", cancellationHandler.AdminList)
-	admin.Post("/cancellations/:id/approve", cancellationHandler.Approve)
-	admin.Post("/cancellations/:id/reject", cancellationHandler.Reject)
+	admin.Get("/cancellations", operations, cancellationHandler.AdminList)
+	admin.Post("/cancellations/:id/approve", operations, cancellationHandler.Approve)
+	admin.Post("/cancellations/:id/reject", operations, cancellationHandler.Reject)
 
 	// Admin - Campaigns
 	admin.Get("/campaigns", campaignHandler.AdminList)
@@ -431,10 +436,10 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 
 	// Admin - Coupons
 	couponHandler := handlers.NewCouponHandler()
-	admin.Get("/coupons", couponHandler.List)
-	admin.Post("/coupons", couponHandler.Create)
-	admin.Put("/coupons/:id", couponHandler.Update)
-	admin.Delete("/coupons/:id", couponHandler.Delete)
+	admin.Get("/coupons", operations, couponHandler.List)
+	admin.Post("/coupons", operations, couponHandler.Create)
+	admin.Put("/coupons/:id", operations, couponHandler.Update)
+	admin.Delete("/coupons/:id", operations, couponHandler.Delete)
 
 	// Admin - Pages
 	admin.Get("/pages", pageHandler.AdminList)
@@ -470,28 +475,30 @@ func setupRoutes(app *fiber.App, cfg *config.Config, db interface{}, arasSvc *ar
 	googleAdmin.Get("/status", googleHandler.Status)
 	googleAdmin.Put("/config", googleHandler.Save)
 	googleAdmin.Post("/report/:provider", googleHandler.Report)
-	admin.Get("/settings", settingHandler.AdminGetAll)
-	admin.Get("/settings/:group", settingHandler.GetByGroup)
-	admin.Put("/settings", settingHandler.Update)
-	admin.Post("/settings/bizimhesap/test", settingHandler.TestBizimhesap)
-	admin.Post("/settings/aras/test", arasHandler.TestConnection)
-	admin.Post("/settings/aras/test-query", arasHandler.TestQuery)
+	admin.Put("/homepage", settingHandler.UpdateHomepage)
+	admin.Get("/settings", operations, settingHandler.AdminGetAll)
+	admin.Get("/settings/:group", operations, settingHandler.GetByGroup)
+	admin.Put("/settings", operations, settingHandler.Update)
+	admin.Post("/settings/bizimhesap/test", operations, settingHandler.TestBizimhesap)
+	admin.Post("/settings/aras/test", operations, arasHandler.TestConnection)
+	admin.Post("/settings/aras/test-query", operations, arasHandler.TestQuery)
 
 	// Admin - Customers
 	customerHandler := handlers.NewCustomerHandler()
-	admin.Get("/customers", customerHandler.List)
-	admin.Get("/customers/:id", customerHandler.GetByID)
+	admin.Get("/customers", operations, customerHandler.List)
+	admin.Get("/customers/:id", operations, customerHandler.GetByID)
 
 	// Admin - Dashboard
 	dashboardHandler := handlers.NewDashboardHandler()
-	admin.Get("/dashboard/stats", dashboardHandler.Stats)
-	admin.Get("/dashboard/chart", dashboardHandler.SalesChart)
+	admin.Get("/dashboard/mobile-lcp", operations, handlers.MobileLCPReport)
+	admin.Get("/dashboard/stats", operations, dashboardHandler.Stats)
+	admin.Get("/dashboard/chart", operations, dashboardHandler.SalesChart)
 
 	// Admin - Marketplace
 	marketplaceHandler := handlers.NewMarketplaceHandler()
-	admin.Get("/marketplace/sync-logs", marketplaceHandler.SyncLogs)
-	admin.Post("/marketplace/trendyol/sync", marketplaceHandler.TriggerTrendyolSync)
-	admin.Post("/marketplace/hepsiburada/sync", marketplaceHandler.TriggerHBSync)
+	admin.Get("/marketplace/sync-logs", operations, marketplaceHandler.SyncLogs)
+	admin.Post("/marketplace/trendyol/sync", operations, marketplaceHandler.TriggerTrendyolSync)
+	admin.Post("/marketplace/hepsiburada/sync", operations, marketplaceHandler.TriggerHBSync)
 
 	// Admin - Import
 	importHandler := handlers.NewImportHandler()

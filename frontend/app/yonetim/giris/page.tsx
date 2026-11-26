@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, APIError } from "@/lib/api";
-import type { AuthResponse } from "@/types";
+import { APIError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export default function AdminLoginPage() {
+  const { adminLogin } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,19 +19,8 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const res = await api.post<AuthResponse>("/auth/admin/login", {
-        email,
-        password,
-      });
-      if (res.data) {
-        // Admin oturumu user oturumundan ayrı — farklı localStorage anahtarları.
-        localStorage.setItem("admin_token", res.data.token);
-        localStorage.setItem("admin_role", res.data.admin?.role || "admin");
-        if (res.data.admin?.full_name) {
-          localStorage.setItem("admin_name", res.data.admin.full_name);
-        }
-        router.push("/yonetim");
-      }
+      await adminLogin(email, password);
+      router.push("/yonetim");
     } catch (err) {
       if (err instanceof APIError) {
         setError(err.message);

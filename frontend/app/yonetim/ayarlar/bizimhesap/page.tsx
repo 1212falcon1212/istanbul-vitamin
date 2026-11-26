@@ -23,7 +23,6 @@ export default function BizimhesapSettingsPage() {
 
   const [enabled, setEnabled] = useState(false);
   const [firmId, setFirmId] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
   const [defaultTaxRate, setDefaultTaxRate] = useState("20");
 
   const [saving, setSaving] = useState(false);
@@ -40,7 +39,6 @@ export default function BizimhesapSettingsPage() {
       const map = res.data?.settings ?? {};
       setEnabled(String(map["bizimhesap.enabled"] ?? "").toLowerCase() === "true");
       setFirmId(map["bizimhesap.firm_id"] ?? "");
-      setBaseUrl(map["bizimhesap.base_url"] ?? "");
       setDefaultTaxRate(map["bizimhesap.default_tax_rate"] ?? "20");
     } catch {
       setLoadError("Ayarlar yüklenemedi.");
@@ -62,7 +60,6 @@ export default function BizimhesapSettingsPage() {
         settings: [
           { key: "bizimhesap.enabled", value: enabled ? "true" : "false", group: "bizimhesap" },
           { key: "bizimhesap.firm_id", value: firmId.trim(), group: "bizimhesap" },
-          { key: "bizimhesap.base_url", value: baseUrl.trim(), group: "bizimhesap" },
           { key: "bizimhesap.default_tax_rate", value: defaultTaxRate.trim() || "20", group: "bizimhesap" },
         ],
       });
@@ -83,7 +80,6 @@ export default function BizimhesapSettingsPage() {
     try {
       const res = await api.post<TestResult>("/admin/settings/bizimhesap/test", {
         firm_id: firmId.trim(),
-        base_url: baseUrl.trim(),
       });
       setTestResult(res.data ?? { ok: false, message: "Yanıt alınamadı." });
     } catch (err) {
@@ -161,13 +157,13 @@ export default function BizimhesapSettingsPage() {
             </label>
             <input
               type="url"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
+              value="https://bizimhesap.com/api/b2b"
+              readOnly
               placeholder="https://bizimhesap.com/api/b2b"
               className="w-full h-10 px-3 rounded-lg border border-border bg-white text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             <p className="text-xs text-text-secondary mt-1">
-              Boş bırakılırsa varsayılan <code className="text-primary">https://bizimhesap.com/api/b2b</code> kullanılır.
+              Bağlantılar bu sağlayıcı adresini kullanır.
             </p>
           </div>
 

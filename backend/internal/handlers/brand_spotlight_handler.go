@@ -25,6 +25,7 @@ func (h *BrandSpotlightHandler) GetSpotlight(c *fiber.Ctx) error {
 		return utils.NotFound(c, "Spotlight marka")
 	}
 
+	attachProductReviews(data.Products)
 	return utils.SuccessResponse(c, fiber.Map{
 		"brand":         data.Brand,
 		"products":      data.Products,

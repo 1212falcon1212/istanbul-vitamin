@@ -38,8 +38,7 @@ interface RegisterData {
   phone?: string;
 }
 
-// Kullanıcı ve admin oturumları ayrı localStorage anahtarlarında tutulur —
-// aynı tarayıcıda her iki oturum eş zamanlı açık kalabilsin diye.
+// Eski tarayıcı belirteçleri geçiş sırasında temizlenir.
 const USER_TOKEN = "auth_token";
 const USER_ROLE = "auth_role"; // her zaman "user"
 const ADMIN_TOKEN = "admin_token";
@@ -51,7 +50,6 @@ async function mergeGuestCart() {
   try {
     const sessionId = localStorage.getItem("cart_session_id");
     if (!sessionId) return;
-    const token = localStorage.getItem(USER_TOKEN);
     await fetch(
       (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1") +
         "/cart/merge",
@@ -61,7 +59,6 @@ async function mergeGuestCart() {
         headers: {
           "Content-Type": "application/json",
           "X-Session-ID": sessionId,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       }
     );
@@ -78,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sessionVersion = useRef(0);
   const loadSessions = useCallback(async () => {
     const version = ++sessionVersion.current;
-    const adminToken = localStorage.getItem(ADMIN_TOKEN);
+    const checkAdmin = localStorage.getItem(ADMIN_ROLE) || window.location.pathname.startsWith("/yonetim");
 
     // User ve admin oturumları birbirinden bağımsız — paralel yükle.
     const tasks: Promise<void>[] = [];
@@ -102,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    if (adminToken) {
+    if (checkAdmin) {
       tasks.push(
         (async () => {
           try {
@@ -126,9 +123,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    localStorage.removeItem(USER_TOKEN);
+    localStorage.removeItem(ADMIN_TOKEN);
     loadSessions();
     const sync = (event: StorageEvent) => {
-      if (event.key === null || [USER_TOKEN, ADMIN_TOKEN].includes(event.key)) loadSessions();
+      if (event.key === null || [USER_ROLE, ADMIN_ROLE].includes(event.key)) loadSessions();
     };
     window.addEventListener("storage", sync);
     return () => { ++sessionVersion.current; window.removeEventListener("storage", sync); };
@@ -141,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (res.data) {
       ++sessionVersion.current;
-      localStorage.setItem(USER_TOKEN, res.data.token);
+      setIsLoading(false);
       localStorage.setItem(USER_ROLE, "user");
       if (res.data.user) setUser(res.data.user);
       await mergeGuestCart();
@@ -156,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<AuthResponse>("/auth/google", { credential });
     if (res.data) {
       ++sessionVersion.current;
-      localStorage.setItem(USER_TOKEN, res.data.token);
+      setIsLoading(false);
       localStorage.setItem(USER_ROLE, "user");
       if (res.data.user) setUser(res.data.user);
       await mergeGuestCart();
@@ -174,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (res.data) {
       ++sessionVersion.current;
-      localStorage.setItem(ADMIN_TOKEN, res.data.token);
+      setIsLoading(false);
       localStorage.setItem(ADMIN_ROLE, res.data.admin?.role || "admin");
       if (res.data.admin) setAdmin(res.data.admin);
     }
@@ -184,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<AuthResponse>("/auth/register", data);
     if (res.data) {
       ++sessionVersion.current;
-      localStorage.setItem(USER_TOKEN, res.data.token);
+      setIsLoading(false);
       localStorage.setItem(USER_ROLE, "user");
       if (res.data.user) setUser(res.data.user);
       await mergeGuestCart();
@@ -208,12 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const adminLogout = async () => {
-    try {
-      // Admin endpoint'e çağır ki backend admin cookie'sini temizlesin.
-      await api.post("/admin/logout");
-    } catch {
-      // ignore
-    }
+    await api.post("/admin/logout");
+    ++sessionVersion.current;
     localStorage.removeItem(ADMIN_TOKEN);
     localStorage.removeItem(ADMIN_ROLE);
     setAdmin(null);
